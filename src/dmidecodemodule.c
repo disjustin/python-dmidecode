@@ -882,6 +882,29 @@ static PyObject * dmidecode_clear_warnings(PyObject *self, PyObject *null)
 }
 
 
+static PyObject * dmidecode_get_debug(PyObject *self, PyObject *null)
+{
+        char *debug = NULL;
+        PyObject *ret = NULL;
+
+        debug = log_retrieve(global_options->logdata, LOG_DEBUG);
+        if( debug ) {
+                ret = PYTEXT_FROMSTRING(debug);
+                free(debug);
+        } else {
+                ret = Py_None;
+        }
+        return ret;
+}
+
+
+static PyObject * dmidecode_clear_debug(PyObject *self, PyObject *null)
+{
+        log_clear_partial(global_options->logdata, LOG_DEBUG, 1);
+        Py_RETURN_TRUE;
+}
+
+
 static PyMethodDef DMIDataMethods[] = {
         {(char *)"dump", dmidecode_dump, METH_NOARGS, (char *)"Dump dmidata to set file"},
         {(char *)"get_dev", dmidecode_get_dev, METH_NOARGS,
@@ -922,6 +945,12 @@ static PyMethodDef DMIDataMethods[] = {
 
         {(char *)"clear_warnings", dmidecode_clear_warnings, METH_NOARGS,
          (char *) "Clear all warnings"},
+
+        {(char *)"get_debug", dmidecode_get_debug, METH_NOARGS,
+         (char *) "Retrieve debug messages from operations"},
+
+        {(char *)"clear_debug", dmidecode_clear_debug, METH_NOARGS,
+         (char *) "Clear all debug messages"},
 
         {NULL, NULL, 0, NULL}
 };
