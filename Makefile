@@ -86,7 +86,7 @@ clean:
 tarball:
 	rm -rf $(PACKAGE)-$(VERSION)
 	mkdir $(PACKAGE)-$(VERSION)
-	cp -r contrib doc examples Makefile man README src dmidecode.py unit-tests/ $(PACKAGE)-$(VERSION)
+	cp -r contrib doc examples Makefile man README.md src dmidecode.py unit-tests/ $(PACKAGE)-$(VERSION)
 	tar -czvf  $(PACKAGE)-$(VERSION).tar.gz  $(PACKAGE)-$(VERSION)
 
 rpm-prep:
