@@ -183,11 +183,22 @@ del xpathctx
 del xmldoc
 ```
 
-### Handling Warnings
+### Handling Warnings and Debug Messages
 
 ```python
 import dmidecode
+import logging
 
+# Method 1: Automatic logging (recommended)
+logging.basicConfig(level=logging.DEBUG, format='%(levelname)s: %(message)s')
+dmidecode.enable_auto_logging(logging.DEBUG)
+
+# Now all operations automatically log warnings and debug messages
+data = dmidecode.QuerySection('bios')
+# Debug messages (SMBIOS version, entry points) logged automatically
+
+
+# Method 2: Manual warning/debug handling
 def print_warnings():
     """Check for and print any warnings"""
     warn = dmidecode.get_warnings()
@@ -195,9 +206,23 @@ def print_warnings():
         print(f"WARNING: {warn}")
         dmidecode.clear_warnings()
 
+def print_debug():
+    """Check for and print debug messages"""
+    debug = dmidecode.get_debug()
+    if debug:
+        print(f"DEBUG: {debug}")
+        dmidecode.clear_debug()
+
 # Query data
 data = dmidecode.QuerySection('bios')
 print_warnings()
+print_debug()
+
+
+# Method 3: Use log_messages() helper
+dmidecode.enable_auto_logging(logging.WARNING)  # Auto-log warnings only
+data = dmidecode.QuerySection('system')
+dmidecode.log_messages()  # Manually trigger logging
 ```
 
 ### Legacy API (Deprecated)
@@ -288,6 +313,32 @@ Get any warnings generated during DMI operations.
 #### `clear_warnings()`
 Clear the warning buffer.
 
+#### `get_debug()`
+Get any debug messages generated during DMI operations.
+- **Returns**: String with debug messages or None
+- **Note**: Debug messages include SMBIOS entry points, version info, structure counts
+
+#### `clear_debug()`
+Clear the debug message buffer.
+
+#### `enable_auto_logging(level=logging.WARNING)`
+Enable automatic logging of warnings and debug messages using Python's logging module.
+- **Parameters**: level (int) - Logging level (logging.WARNING or logging.DEBUG)
+- **Note**: Requires `import logging` and logging configuration
+- **Example**:
+  ```python
+  import logging
+  logging.basicConfig(level=logging.DEBUG)
+  dmidecode.enable_auto_logging(logging.DEBUG)
+  ```
+
+#### `disable_auto_logging()`
+Disable automatic logging of warnings and debug messages.
+
+#### `log_messages()`
+Manually log any warnings and debug messages from the last operation.
+- **Note**: Automatically called after operations if `enable_auto_logging()` was used
+
 ### XML API
 
 #### `dmidecodeXML()`
@@ -308,7 +359,58 @@ Query type ID, return as libxml2 object.
 ## Examples
 
 See the `examples/` directory for complete working examples:
-- `examples/dmidump.py` - Comprehensive example demonstrating all features
+
+### dump_all_dmi.py - Comprehensive DMI Data Dumper
+
+A powerful script that outputs ALL available DMI/SMBIOS information in multiple formats:
+
+```bash
+# Basic usage - dump all sections
+sudo python3 examples/dump_all_dmi.py
+
+# Show only summary
+sudo python3 examples/dump_all_dmi.py --summary
+
+# Dump specific sections only
+python3 examples/dump_all_dmi.py --sections bios,system,processor
+
+# Dump all DMI types (0-43) individually
+sudo python3 examples/dump_all_dmi.py --all-types
+
+# Output as JSON
+sudo python3 examples/dump_all_dmi.py --format json > hardware.json
+
+# Output as Python dict
+sudo python3 examples/dump_all_dmi.py --format python
+
+# Show debug messages (SMBIOS version, entry points, etc.)
+sudo python3 examples/dump_all_dmi.py --debug
+
+# Create dump file for non-root usage
+sudo python3 examples/dump_all_dmi.py --create-dump
+python3 examples/dump_all_dmi.py --dump-file dmidata.dump
+
+# Show raw entry data (very verbose)
+sudo python3 examples/dump_all_dmi.py --raw
+```
+
+**Features:**
+- Dumps all DMI sections: bios, system, baseboard, chassis, processor, memory, cache, connector, slot
+- Can dump all 44 DMI types (0-43) individually
+- Multiple output formats: text (human-readable), JSON, Python dict
+- Hardware summary with key information
+- Supports DMI dump files for non-root usage
+- Integrated with Python logging for debug messages
+- Comprehensive error handling
+
+### dmidump.py - API Feature Demonstration
+
+Original example demonstrating all python-dmidecode features including XML API:
+
+```bash
+# Comprehensive API demonstration
+sudo python3 examples/dmidump.py
+```
 
 ## Testing
 
