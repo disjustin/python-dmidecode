@@ -102,7 +102,11 @@ ls rpm/RPMS/*/python-dmidecode-*.rpm
 sudo dnf install rpm/RPMS/*/python-dmidecode-*.rpm
 ```
 
-**Note:** The spec file has been updated for Python 3. If building on older systems, you may need to adjust the spec file in `contrib/python-dmidecode.spec`.
+**Notes:**
+- The spec file has been updated for Python 3
+- Unit tests are skipped during RPM build as they require `/dev/mem` access which is not available in RPM build environments
+- Tests can be run manually after installation using: `make unit`
+- If building on older systems, you may need to adjust the spec file in `contrib/python-dmidecode.spec`
 
 ## Usage
 
