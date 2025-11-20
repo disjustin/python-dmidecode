@@ -1,24 +1,34 @@
-%{!?python_sitearch: %global python_sitearch %(%{__python} -c "from distutils.sysconfig import get_python_lib; print get_python_lib(1)")}
-%{!?python_ver: %global python_ver %(%{__python} -c "import sys ; print sys.version[:3]")}
+%global __python3 /usr/bin/python3
+%{!?python3_sitearch: %global python3_sitearch %(%{__python3} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib(1))")}
+%{!?python3_version: %global python3_version %(%{__python3} -c "import sys; print('%s.%s' % sys.version_info[:2])")}
 
-Summary: Python module to access DMI data
+Summary: Python 3 module to access DMI data
 Name: python-dmidecode
 Version: 3.12.3
-Release: 1%{?dist}
+Release: 2%{?dist}
 License: GPLv2
 Group: System Environment/Libraries
 URL: http://projects.autonomy.net.au/python-dmidecode/
 Source0: http://src.autonomy.net.au/python-dmidecode/%{name}-%{version}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
-Requires: libxml2-python
-BuildRequires: libxml2-python
+Requires: python3-libxml2
+BuildRequires: python3-libxml2
 BuildRequires: libxml2-devel
-BuildRequires: python-devel
+BuildRequires: python3-devel
+BuildRequires: gcc
+BuildRequires: make
 
 %description
-python-dmidecode is a python extension module that uses the
+python-dmidecode is a Python 3 extension module that uses the
 code-base of the 'dmidecode' utility, and presents the data
-as python data structures or as XML data using libxml2.
+as Python data structures or as XML data using libxml2.
+
+Features:
+- Direct DMI/SMBIOS data access
+- Python dictionary and XML (libxml2) APIs
+- Support for SMBIOS 3.7.0
+- Python logging integration
+- DMI dump file support for non-root usage
 
 %prep
 %setup -q
@@ -31,7 +41,7 @@ cd ..
 
 %install
 rm -rf $RPM_BUILD_ROOT
-python src/setup.py install --root $RPM_BUILD_ROOT --prefix=%{_prefix}
+%{__python3} src/setup.py install --root $RPM_BUILD_ROOT --prefix=%{_prefix}
 
 %clean
 rm -rf $RPM_BUILD_ROOT
@@ -40,15 +50,22 @@ rm -rf $RPM_BUILD_ROOT
 %files
 %defattr(-,root,root,-)
 %doc README doc/README.upstream doc/LICENSE doc/AUTHORS doc/AUTHORS.upstream
-%{python_sitearch}/dmidecodemod.so
-%{python_sitearch}/dmidecode.py
-%{python_sitearch}/dmidecode.py[co]
-%if "%{python_ver}" >= "2.5"
-%{python_sitearch}/*.egg-info
-%endif
+%{python3_sitearch}/dmidecodemod*.so
+%{python3_sitearch}/dmidecode.py
+%{python3_sitearch}/__pycache__/dmidecode*.pyc
+%{python3_sitearch}/*.egg-info
 %{_datadir}/python-dmidecode/
 
 %changelog
+* Wed Nov 20 2024 Python DMI Team <maintainer@example.com> - 3.12.3-2
+- Updated spec file for Python 3 compatibility
+- Added SMBIOS 3.7.0 support
+- Added Python logging integration (enable_auto_logging, get_debug, clear_debug)
+- Added comprehensive dump_all_dmi.py example script
+- Enhanced documentation with logging API and usage examples
+- Fixed "Failed to save log entry" errors for LOG_DEBUG messages
+- Converted SMBIOS entry point and version messages to debug level
+
 * Thu Nov 17 2022 Lianbo Jiang <lijiang@redhat.com> - 3.12.3-1
 - Update to new release
 

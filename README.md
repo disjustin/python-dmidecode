@@ -35,6 +35,25 @@ The module provides both a Python dictionary-based API and an XML-based API usin
 
 ## Installation
 
+### Prerequisites
+
+**Rocky Linux / RHEL / CentOS / Fedora:**
+```bash
+sudo dnf install -y python3-devel libxml2-devel gcc make
+```
+
+**Ubuntu / Debian:**
+```bash
+sudo apt-get install -y python3-dev libxml2-dev gcc make
+```
+
+**Verify Installation:**
+```bash
+python3-config --includes    # Should show Python include paths
+xml2-config --cflags         # Should show libxml2 compile flags
+gcc --version                # Should show GCC version
+```
+
 ### From Source
 
 1. Clone or download the repository:
@@ -45,12 +64,23 @@ cd python-dmidecode
 
 2. Build the extension module:
 ```bash
+make clean
 make
+```
+
+**Note:** If you have multiple Python versions installed, specify which to use:
+```bash
+make PY_BIN=python3.11
 ```
 
 3. Install (requires root):
 ```bash
 sudo make install
+```
+
+4. Verify installation:
+```bash
+python3 -c "import dmidecode; print('Success!')"
 ```
 
 ### Uninstall
@@ -59,10 +89,20 @@ sudo make uninstall
 ```
 
 ### Building RPM Package
+
 ```bash
+# Create tarball and build RPM
 make tarball
 make rpm
+
+# RPM will be in rpm/RPMS/
+ls rpm/RPMS/*/python-dmidecode-*.rpm
+
+# Install RPM
+sudo dnf install rpm/RPMS/*/python-dmidecode-*.rpm
 ```
+
+**Note:** The spec file has been updated for Python 3. If building on older systems, you may need to adjust the spec file in `contrib/python-dmidecode.spec`.
 
 ## Usage
 
@@ -421,17 +461,62 @@ make unit
 
 ## Troubleshooting
 
-### Permission Denied Errors
+### Build Errors
+
+**Error: "Python.h: No such file or directory"**
+```
+fatal error: Python.h: No such file or directory
+```
+**Solution:** Install Python development headers:
+- Rocky/RHEL: `sudo dnf install python3-devel`
+- Ubuntu/Debian: `sudo apt-get install python3-dev`
+
+**Error: "Could not run xml2-config"**
+```
+Could not run xml2-config, is libxml2 installed?
+```
+**Solution:** Install libxml2 development libraries:
+- Rocky/RHEL: `sudo dnf install libxml2-devel`
+- Ubuntu/Debian: `sudo apt-get install libxml2-dev`
+
+**Error: "attempt to use unversioned python" (RPM build)**
+```
+error: attempt to use unversioned python
+```
+**Solution:** The spec file has been updated for Python 3. Ensure you're using the latest spec file from `contrib/python-dmidecode.spec`.
+
+**Building with specific Python version:**
+```bash
+# Use Python 3.11 explicitly
+make PY_BIN=python3.11
+
+# Or Python 3.9
+make PY_BIN=python3.9
+```
+
+### Runtime Errors
+
+**Permission Denied Errors**
 - Solution: Run as root or create a dump file as root first, then use dump file
 
-### "No SMBIOS nor DMI entry point found"
+**"No SMBIOS nor DMI entry point found"**
 - Your system may not have DMI/SMBIOS support
-- Try checking if /dev/mem is accessible
+- Try checking if /dev/mem is accessible: `ls -la /dev/mem`
+- Some virtualization platforms may not expose DMI data
 
-### Module Import Error
+**Module Import Error**
+```python
+ImportError: No module named dmidecode
+```
+**Solution:**
 - Ensure the module is installed: `sudo make install`
-- Check Python version compatibility
-- Verify libxml2 is installed
+- Check Python version compatibility: `python3 -c "import sys; print(sys.version)"`
+- Verify installation path: `python3 -c "import sys; print(sys.path)"`
+- Try reinstalling: `sudo make uninstall && sudo make install`
+
+**"Failed to save log entry" errors**
+- If you see this error on modern systems (Rocky Linux 9+, SMBIOS 3.4+), ensure you're using the latest version with LOG_DEBUG support
+- This was fixed in the latest release
 
 ## Suggestions for Improvement
 
