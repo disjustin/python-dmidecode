@@ -92,7 +92,7 @@
 #include "dmidump.h"
 #include "dmihelper.h"
 
-#define SUPPORTED_SMBIOS_VER 0x030300
+#define SUPPORTED_SMBIOS_VER 0x030700
 #define OUT_OF_SPEC "outofspec"
 
 /*******************************************************************************
@@ -6140,7 +6140,7 @@ static void dmi_table(Log_t *logp, int type, u32 base, u32 len, u16 num, u32 ver
 	}
 
 	if (ver > SUPPORTED_SMBIOS_VER){
-		log_append(logp, LOGFL_NODUPS, LOG_WARNING, "# SMBIOS implementations newer than version %u.%u.%u are not\n fully supported by this version of dmidecode.\n", SUPPORTED_SMBIOS_VER >> 16, (SUPPORTED_SMBIOS_VER >> 8) & 0xFF, SUPPORTED_SMBIOS_VER & 0xFF);
+		log_append(logp, LOGFL_NODUPS, LOG_DEBUG, "# SMBIOS implementations newer than version %u.%u.%u are not\n fully supported by this version of dmidecode.\n", SUPPORTED_SMBIOS_VER >> 16, (SUPPORTED_SMBIOS_VER >> 8) & 0xFF, SUPPORTED_SMBIOS_VER & 0xFF);
 	}
 
         if( version_added == 0 ) {
@@ -6241,7 +6241,7 @@ static void dmi_table(Log_t *logp, int type, u32 base, u32 len, u16 num, u32 ver
         }
 
         if(i != num) {
-                log_append(logp, LOGFL_NODUPS, LOG_WARNING,
+                log_append(logp, LOGFL_NODUPS, LOG_DEBUG,
                            "Wrong DMI structures count: %d announced, only %d decoded.", num, i);
         }
 

@@ -61,7 +61,7 @@ Log_t * log_init()
  *
  * @param logp   Pointer to an allocated Log_t record.  New records will be appended to the end
  * @param flags  Log flags, to specify logging behaviour
- * @param level  syslog log level values.  LOG_ERR and LOG_WARNING are allowed
+ * @param level  syslog log level values.  LOG_ERR, LOG_WARNING and LOG_DEBUG are allowed
  * @param fmt    stdarg based string with the log contents
  *
  * @return Returns 1 on successful registration of log entry, otherwise -1 and error is printed to stderr
@@ -90,7 +90,7 @@ int log_append(Log_t *logp, Log_f flags, int level, const char *fmt, ...)
                 ptr = ptr->next;
         }
 
-        if( ptr && ((level == LOG_ERR) || (level == LOG_WARNING)) ) {
+        if( ptr && ((level == LOG_ERR) || (level == LOG_WARNING) || (level == LOG_DEBUG)) ) {
                 ptr->next = log_init();
                 if( ptr->next ) {
                         ptr->next->level = level;
@@ -100,11 +100,12 @@ int log_append(Log_t *logp, Log_f flags, int level, const char *fmt, ...)
         }
 
         if( !(flags & LOGFL_NOSTDERR) ) {
-                if( logp ) {
+                if( logp && (level != LOG_DEBUG) ) {
                         // Only print this if we logp is pointing somewhere.
                         // If it is NULL, the caller did not establish a log
                         // buffer on purpose (like dmidump.c) - thus this is
                         // not an error with saving the log entry.
+                        // Also don't print error for LOG_DEBUG messages.
                         fprintf(stderr, "** ERROR **  Failed to save log entry\n");
                 }
                 fprintf(stderr, "%s\n", logmsg);

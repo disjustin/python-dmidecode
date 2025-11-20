@@ -1,1 +1,11 @@
 *.pyc
+*.tar.gz
+python-dmidecode-*/
+build/
+rpm/
+*.so
+*.o
+__pycache__/
+*.egg-info/
+dmidata.dump
+dmidump.xml
