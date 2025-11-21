@@ -51,7 +51,7 @@ rm -rf $RPM_BUILD_ROOT
 
 %files
 %defattr(-,root,root,-)
-%doc README doc/README.upstream doc/LICENSE doc/AUTHORS doc/AUTHORS.upstream
+%doc README.md doc/README.upstream doc/LICENSE doc/AUTHORS doc/AUTHORS.upstream
 %{python3_sitearch}/dmidecodemod*.so
 %{python3_sitearch}/dmidecode.py
 %{python3_sitearch}/__pycache__/dmidecode*.pyc

@@ -23,12 +23,14 @@ The module provides both a Python dictionary-based API and an XML-based API usin
 ## Requirements
 
 ### Build Requirements
+
 - Python 3.x (Python 2.7+ also supported)
 - GCC or compatible C compiler
 - libxml2 development headers (libxml2-dev or libxml2-devel)
 - make
 
 ### Runtime Requirements
+
 - Python 3.x (or Python 2.7+)
 - libxml2
 - Root privileges (for initial DMI data access from /dev/mem)
@@ -38,16 +40,19 @@ The module provides both a Python dictionary-based API and an XML-based API usin
 ### Prerequisites
 
 **Rocky Linux / RHEL / CentOS / Fedora:**
+
 ```bash
 sudo dnf install -y python3-devel libxml2-devel gcc make
 ```
 
 **Ubuntu / Debian:**
+
 ```bash
 sudo apt-get install -y python3-dev libxml2-dev gcc make
 ```
 
 **Verify Installation:**
+
 ```bash
 python3-config --includes    # Should show Python include paths
 xml2-config --cflags         # Should show libxml2 compile flags
@@ -57,33 +62,39 @@ gcc --version                # Should show GCC version
 ### From Source
 
 1. Clone or download the repository:
+
 ```bash
 git clone https://github.com/nima/python-dmidecode.git
 cd python-dmidecode
 ```
 
 2. Build the extension module:
+
 ```bash
 make clean
 make
 ```
 
 **Note:** If you have multiple Python versions installed, specify which to use:
+
 ```bash
 make PY_BIN=python3.11
 ```
 
 3. Install (requires root):
+
 ```bash
 sudo make install
 ```
 
 4. Verify installation:
+
 ```bash
 python3 -c "import dmidecode; print('Success!')"
 ```
 
 ### Uninstall
+
 ```bash
 sudo make uninstall
 ```
@@ -103,6 +114,7 @@ sudo dnf install rpm/RPMS/*/python-dmidecode-*.rpm
 ```
 
 **Notes:**
+
 - The spec file has been updated for Python 3
 - Unit tests are skipped during RPM build as they require `/dev/mem` access which is not available in RPM build environments
 - Tests can be run manually after installation using: `make unit`
@@ -170,6 +182,7 @@ See doc/README.types for a complete list of DMI type IDs (0-43).
 ### Creating and Using DMI Dumps
 
 DMI dumps allow you to:
+
 - Test scripts without root access after initial dump
 - Archive hardware configurations
 - Analyze hardware offline
@@ -324,52 +337,71 @@ for key, value in memory_data.items():
 ### Main Functions
 
 #### `QuerySection(section_name)`
+
 Query DMI data by section name.
+
 - **Parameters**: section_name (str) - One of: 'all', 'bios', 'system', 'baseboard', 'chassis', 'processor', 'memory', 'cache', 'connector', 'slot'
 - **Returns**: Dictionary containing DMI data
 - **Raises**: Exception on error
 
 #### `QueryTypeId(type_id)`
+
 Query DMI data by type ID.
+
 - **Parameters**: type_id (int) - DMI type ID (0-43)
 - **Returns**: Dictionary containing DMI data for specified type
 - **Raises**: Exception on error
 
 #### `dump()`
+
 Create a dump of DMI data to file.
+
 - **Returns**: Status string
 - **Requires**: Root privileges
 - **Note**: Writes to file specified by set_dev() or default 'dmidata.dump'
 
 #### `set_dev(device)`
+
 Set the device/file to read DMI data from.
+
 - **Parameters**: device (str) - Path to /dev/mem or dump file
 - **Returns**: Status
 
 #### `get_dev()`
+
 Get the current device/file path.
+
 - **Returns**: String path to current device
 
 #### `get_warnings()`
+
 Get any warnings generated during DMI operations.
+
 - **Returns**: String with warnings or None
 
 #### `clear_warnings()`
+
 Clear the warning buffer.
 
 #### `get_debug()`
+
 Get any debug messages generated during DMI operations.
+
 - **Returns**: String with debug messages or None
 - **Note**: Debug messages include SMBIOS entry points, version info, structure counts
 
 #### `clear_debug()`
+
 Clear the debug message buffer.
 
 #### `enable_auto_logging(level=logging.WARNING)`
+
 Enable automatic logging of warnings and debug messages using Python's logging module.
+
 - **Parameters**: level (int) - Logging level (logging.WARNING or logging.DEBUG)
 - **Note**: Requires `import logging` and logging configuration
 - **Example**:
+
   ```python
   import logging
   logging.basicConfig(level=logging.DEBUG)
@@ -377,27 +409,37 @@ Enable automatic logging of warnings and debug messages using Python's logging m
   ```
 
 #### `disable_auto_logging()`
+
 Disable automatic logging of warnings and debug messages.
 
 #### `log_messages()`
+
 Manually log any warnings and debug messages from the last operation.
+
 - **Note**: Automatically called after operations if `enable_auto_logging()` was used
 
 ### XML API
 
 #### `dmidecodeXML()`
+
 Create XML API object.
 
 #### `SetResultType(type)`
+
 Set XML result type.
+
 - **Parameters**: type - dmidecode.DMIXML_DOC or dmidecode.DMIXML_NODE
 
 #### `QuerySection(section_name)`
+
 Query section, return as libxml2 object.
+
 - **Returns**: libxml2.xmlDoc or libxml2.xmlNode
 
 #### `QueryTypeId(type_id)`
+
 Query type ID, return as libxml2 object.
+
 - **Returns**: libxml2.xmlDoc or libxml2.xmlNode
 
 ## Examples
@@ -439,6 +481,7 @@ sudo python3 examples/dump_all_dmi.py --raw
 ```
 
 **Features:**
+
 - Dumps all DMI sections: bios, system, baseboard, chassis, processor, memory, cache, connector, slot
 - Can dump all 44 DMI types (0-43) individually
 - Multiple output formats: text (human-readable), JSON, Python dict
@@ -459,6 +502,7 @@ sudo python3 examples/dmidump.py
 ## Testing
 
 Run the included unit tests:
+
 ```bash
 make unit
 ```
@@ -468,28 +512,37 @@ make unit
 ### Build Errors
 
 **Error: "Python.h: No such file or directory"**
+
 ```
 fatal error: Python.h: No such file or directory
 ```
+
 **Solution:** Install Python development headers:
+
 - Rocky/RHEL: `sudo dnf install python3-devel`
 - Ubuntu/Debian: `sudo apt-get install python3-dev`
 
 **Error: "Could not run xml2-config"**
+
 ```
 Could not run xml2-config, is libxml2 installed?
 ```
+
 **Solution:** Install libxml2 development libraries:
+
 - Rocky/RHEL: `sudo dnf install libxml2-devel`
 - Ubuntu/Debian: `sudo apt-get install libxml2-dev`
 
 **Error: "attempt to use unversioned python" (RPM build)**
+
 ```
 error: attempt to use unversioned python
 ```
+
 **Solution:** The spec file has been updated for Python 3. Ensure you're using the latest spec file from `contrib/python-dmidecode.spec`.
 
 **Building with specific Python version:**
+
 ```bash
 # Use Python 3.11 explicitly
 make PY_BIN=python3.11
@@ -501,30 +554,37 @@ make PY_BIN=python3.9
 ### Runtime Errors
 
 **Permission Denied Errors**
+
 - Solution: Run as root or create a dump file as root first, then use dump file
 
 **"No SMBIOS nor DMI entry point found"**
+
 - Your system may not have DMI/SMBIOS support
 - Try checking if /dev/mem is accessible: `ls -la /dev/mem`
 - Some virtualization platforms may not expose DMI data
 
 **Module Import Error**
+
 ```python
 ImportError: No module named dmidecode
 ```
+
 **Solution:**
+
 - Ensure the module is installed: `sudo make install`
 - Check Python version compatibility: `python3 -c "import sys; print(sys.version)"`
 - Verify installation path: `python3 -c "import sys; print(sys.path)"`
 - Try reinstalling: `sudo make uninstall && sudo make install`
 
 **"Failed to save log entry" errors**
+
 - If you see this error on modern systems (Rocky Linux 9+, SMBIOS 3.4+), ensure you're using the latest version with LOG_DEBUG support
 - This was fixed in the latest release
 
 ## Suggestions for Improvement
 
 ### High Priority
+
 1. **Python Package Distribution**
    - Publish to PyPI for easy `pip install python-dmidecode`
    - Add setup.py wheel support for binary distributions
@@ -548,6 +608,7 @@ ImportError: No module named dmidecode
    - Return typed objects instead of raw dictionaries
 
 ### Medium Priority
+
 5. **Testing**
    - Expand unit test coverage
    - Add integration tests
@@ -572,6 +633,7 @@ ImportError: No module named dmidecode
    - Add fuzzing tests for C extension
 
 ### Low Priority
+
 9. **Features**
    - Support for UEFI systems
    - Diff capability for comparing hardware configurations
@@ -594,6 +656,7 @@ ImportError: No module named dmidecode
 ## TODO
 
 ### Short Term
+
 - [ ] Create comprehensive unit tests for all DMI types
 - [ ] Add GitHub Actions CI/CD pipeline
 - [ ] Write Sphinx documentation
@@ -606,6 +669,7 @@ ImportError: No module named dmidecode
 - [ ] Document all supported DMI structures
 
 ### Medium Term
+
 - [ ] Add context manager support for resource cleanup
 - [ ] Create dataclass models for DMI structures
 - [ ] Implement caching mechanism for performance
@@ -618,6 +682,7 @@ ImportError: No module named dmidecode
 - [ ] Add validation for DMI data integrity
 
 ### Long Term
+
 - [ ] Support for UEFI firmware interfaces
 - [ ] Cross-platform support (Windows, macOS)
 - [ ] Performance optimization for large systems
@@ -630,6 +695,7 @@ ImportError: No module named dmidecode
 - [ ] Container/VM detection and handling
 
 ### Infrastructure
+
 - [ ] Migrate to modern build system (meson/cmake)
 - [ ] Set up code coverage reporting
 - [ ] Add static analysis tools
@@ -654,18 +720,19 @@ See the LICENSE file for details.
 ## Contributing
 
 Contributions are welcome! Please ensure:
+
 1. Code follows existing style
 2. All tests pass
 3. New features include tests
 4. Documentation is updated
 
 Join the discussion mailing list:
-http://lists.nongnu.org/mailman/listinfo/dmidecode-devel
+<http://lists.nongnu.org/mailman/listinfo/dmidecode-devel>
 
 ## Links
 
-- Project Page: http://projects.autonomy.net.au/python-dmidecode/
-- Upstream dmidecode: http://www.nongnu.org/dmidecode/
+- Project Page: <http://projects.autonomy.net.au/python-dmidecode/>
+- Upstream dmidecode: <http://www.nongnu.org/dmidecode/>
 - Bug Reports: Use GitHub issues or contact maintainers
 
 ## Version

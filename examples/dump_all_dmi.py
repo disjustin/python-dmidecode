@@ -21,7 +21,7 @@
 #
 
 """
-Comprehensive DMI Data Dumper
+DMI Data Dumper
 
 This script queries and displays ALL available DMI/SMBIOS information from your system.
 It can output data in multiple formats and provides complete hardware inventory.
@@ -111,6 +111,23 @@ DMI_SECTIONS = {
     'connector': (8,),
     'slot': (9,),
 }
+
+
+def decode_bytes(obj):
+    """Recursively decode byte strings to regular strings"""
+    if isinstance(obj, bytes):
+        try:
+            return obj.decode('utf-8', errors='replace')
+        except:
+            return str(obj)
+    elif isinstance(obj, dict):
+        return {decode_bytes(k): decode_bytes(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [decode_bytes(item) for item in obj]
+    elif isinstance(obj, tuple):
+        return tuple(decode_bytes(item) for item in obj)
+    else:
+        return obj
 
 
 def setup_logging(debug=False):
@@ -246,6 +263,7 @@ def dump_all_sections(output_format='text', sections=None, show_raw=False):
     for section in sections:
         try:
             data = dmidecode.QuerySection(section)
+            data = decode_bytes(data)  # Decode byte strings to regular strings
             all_data[section] = data
 
             if output_format == 'text':
@@ -279,6 +297,7 @@ def dump_all_types(output_format='text', show_raw=False):
 
             # Only process if we got data
             if data:
+                data = decode_bytes(data)  # Decode byte strings to regular strings
                 all_data[type_id] = data
 
                 if output_format == 'text':
@@ -309,6 +328,7 @@ def print_summary():
     # Get system info
     try:
         system_data = dmidecode.QuerySection('system')
+        system_data = decode_bytes(system_data)  # Decode byte strings to regular strings
         for entry in system_data.values():
             if isinstance(entry, dict) and entry.get('dmi_type') == 1:
                 data = entry.get('data', {})
@@ -323,6 +343,7 @@ def print_summary():
     # Get BIOS info
     try:
         bios_data = dmidecode.QuerySection('bios')
+        bios_data = decode_bytes(bios_data)  # Decode byte strings to regular strings
         for entry in bios_data.values():
             if isinstance(entry, dict) and entry.get('dmi_type') == 0:
                 data = entry.get('data', {})
@@ -336,6 +357,7 @@ def print_summary():
     # Get processor info
     try:
         proc_data = dmidecode.QuerySection('processor')
+        proc_data = decode_bytes(proc_data)  # Decode byte strings to regular strings
         proc_count = 0
         for entry in proc_data.values():
             if isinstance(entry, dict) and entry.get('dmi_type') == 4:
@@ -350,6 +372,7 @@ def print_summary():
     # Get memory info
     try:
         mem_data = dmidecode.QuerySection('memory')
+        mem_data = decode_bytes(mem_data)  # Decode byte strings to regular strings
         total_size = 0
         module_count = 0
         for entry in mem_data.values():
