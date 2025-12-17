@@ -329,12 +329,38 @@ def format_oem_data(type_id, entry, show_raw=False):
     if 'data' in entry and isinstance(entry['data'], dict):
         data = entry['data']
 
-        # Try to display structured data first
-        has_structured_data = False
+        # Handle Header and Data first (raw bytes)
+        raw_data_keys = ['Header and Data', 'raw_data', 'Raw Data']
+        for raw_key in raw_data_keys:
+            if raw_key in data:
+                raw_value = data[raw_key]
+                lines.append(f"  Header and Data:")
+                if isinstance(raw_value, str):
+                    # Format as hex dump with proper formatting
+                    lines.append(format_hex_dump(raw_value))
+                elif isinstance(raw_value, (list, tuple)):
+                    # Format bytes as hex
+                    hex_str = ' '.join(f'{b:02X}' if isinstance(b, int) else str(b) for b in raw_value)
+                    lines.append(f"    {hex_str}")
+                else:
+                    lines.append(f"    {raw_value}")
+                break  # Only show one raw data section
+
+        # Handle Strings
+        if 'Strings' in data and data['Strings']:
+            lines.append(f"  Strings:")
+            strings_data = data['Strings']
+            if isinstance(strings_data, dict):
+                for idx in sorted(strings_data.keys(), key=lambda x: int(x) if x.isdigit() else 0):
+                    lines.append(f"    String {idx}: {strings_data[idx]}")
+            elif isinstance(strings_data, list):
+                for i, s in enumerate(strings_data, 1):
+                    lines.append(f"    String {i}: {s}")
+
+        # Display other structured data
         for key, value in sorted(data.items()):
-            if key in ('Header and Data', 'raw_data', 'Raw Data'):
-                continue  # Handle raw data separately
-            has_structured_data = True
+            if key in ('Header and Data', 'raw_data', 'Raw Data', 'Strings'):
+                continue  # Already handled
             if isinstance(value, dict):
                 lines.append(f"  {key}:")
                 for k, v in value.items():
@@ -345,29 +371,6 @@ def format_oem_data(type_id, entry, show_raw=False):
                     lines.append(f"    - {item}")
             else:
                 lines.append(f"  {key}: {value}")
-
-        # Handle raw data
-        raw_data_keys = ['Header and Data', 'raw_data', 'Raw Data']
-        for raw_key in raw_data_keys:
-            if raw_key in data:
-                raw_value = data[raw_key]
-                lines.append(f"  Raw Data:")
-                if isinstance(raw_value, str):
-                    # Format as hex dump
-                    lines.append(format_hex_dump(raw_value))
-                elif isinstance(raw_value, (list, tuple)):
-                    # Format bytes as hex
-                    hex_str = ' '.join(f'{b:02X}' if isinstance(b, int) else str(b) for b in raw_value)
-                    lines.append(f"    {hex_str}")
-                else:
-                    lines.append(f"    {raw_value}")
-
-        # Try to extract and display any embedded strings
-        found_strings = try_decode_oem_strings(data)
-        if found_strings and not has_structured_data:
-            lines.append("  Decoded Strings:")
-            for key, string in found_strings:
-                lines.append(f"    {key}: {string}")
 
     elif 'data' in entry:
         # Raw data that's not a dict
@@ -554,7 +557,10 @@ def extract_data_from_xml_string(xml_str, type_id):
     """
     Extract data from XML string for OEM types.
 
-    Parses XML string and extracts handle, size, and any data fields.
+    Parses XML string and extracts handle, size, raw bytes (Header and Data), and strings.
+    The XML format from dmidecode has:
+    - <HeaderAndData><Row index="0">0x020x03...</Row></HeaderAndData>
+    - <Strings><String index="1">some string</String></Strings>
     """
     import re
     result = {}
@@ -571,25 +577,20 @@ def extract_data_from_xml_string(xml_str, type_id):
     type_pattern = rf'type="{type_id}"[^>]*size="(\d+)"'
     sizes = re.findall(type_pattern, xml_str)
 
-    # Find any string records
-    string_pattern = r'<Record[^>]*index="(\d+)"[^>]*>([^<]+)</Record>'
+    # Find Row elements inside HeaderAndData - these contain the raw bytes
+    # Format is: <Row index="0">0x020x030x04...</Row>
+    row_pattern = r'<Row[^>]*>([^<]+)</Row>'
+    row_data = re.findall(row_pattern, xml_str)
+
+    # Find String elements inside Strings
+    # Format is: <String index="1">some string</String>
+    string_pattern = r'<String[^>]*index="(\d+)"[^>]*>([^<]*)</String>'
     strings = re.findall(string_pattern, xml_str)
 
-    # Find raw data content - multiple patterns for different XML formats
-    raw_patterns = [
-        r'<RawData>([^<]+)</RawData>',
-        r'<Data>([0-9A-Fa-f\s]+)</Data>',
-        r'<RawBytes>([^<]+)</RawBytes>',
-        r'<HeaderAndData>([^<]+)</HeaderAndData>',
-    ]
-    raw_data = []
-    for pattern in raw_patterns:
-        matches = re.findall(pattern, xml_str)
-        raw_data.extend(matches)
-
-    # Find any other content tags
-    content_pattern = r'<(\w+)>([^<]+)</\1>'
-    all_content = re.findall(content_pattern, xml_str)
+    # Also check for Record elements (alternative format)
+    record_pattern = r'<Record[^>]*index="(\d+)"[^>]*>([^<]+)</Record>'
+    records = re.findall(record_pattern, xml_str)
+    strings.extend(records)
 
     for i, handle in enumerate(handles):
         entry = {
@@ -599,21 +600,25 @@ def extract_data_from_xml_string(xml_str, type_id):
             'data': {}
         }
 
+        # Process raw data from Row elements
+        if row_data:
+            # Combine all rows and format as hex bytes
+            all_bytes = []
+            for row in row_data:
+                # Row data is in format "0x020x030x04..." - extract hex values
+                hex_values = re.findall(r'0x([0-9A-Fa-f]{2})', row)
+                all_bytes.extend(hex_values)
+
+            if all_bytes:
+                # Format as space-separated hex bytes (uppercase)
+                entry['data']['Header and Data'] = ' '.join(b.upper() for b in all_bytes)
+
         # Add strings
         if strings:
-            entry['data']['Strings'] = {idx: val.strip() for idx, val in strings}
-
-        # Add raw data as Header and Data
-        if raw_data:
-            # Format as hex byte array
-            raw_hex = ' '.join(raw_data).strip()
-            if raw_hex:
-                entry['data']['Header and Data'] = raw_hex
-
-        # Add other content
-        for tag, content in all_content:
-            if tag not in ('Record', 'RawData', 'Data', 'RawBytes', 'HeaderAndData') and content.strip():
-                entry['data'][tag] = content.strip()
+            entry['data']['Strings'] = {}
+            for idx, val in strings:
+                if val.strip():
+                    entry['data']['Strings'][idx] = val.strip()
 
         result[handle] = entry
 
