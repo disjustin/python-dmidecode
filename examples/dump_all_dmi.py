@@ -79,6 +79,13 @@ import argparse
 import pprint as pprint_module
 from pprint import pprint
 
+# Try to import libxml2 for XML API support
+try:
+    import libxml2
+    HAS_LIBXML2 = True
+except ImportError:
+    HAS_LIBXML2 = False
+
 # DMI Type ID to Name mapping (SMBIOS specification)
 # Types 0-43 are defined by SMBIOS specification
 # Types 44-127 are reserved for future use
@@ -371,6 +378,231 @@ def format_oem_data(type_id, entry, show_raw=False):
     return '\n'.join(lines)
 
 
+def query_type_with_xml_fallback(type_id):
+    """
+    Query a DMI type, falling back to XML API for types without pymap.xml mappings.
+
+    This is particularly useful for OEM types (128-255) which don't have
+    standard mappings defined.
+
+    Returns:
+        dict: Dictionary with DMI data, or None if type doesn't exist
+    """
+    # First try the standard Python API
+    try:
+        data = dmidecode.QueryTypeId(type_id)
+        if data:
+            return data
+    except Exception:
+        pass
+
+    # Fall back to XML API for unmapped types (especially OEM types)
+    if HAS_LIBXML2:
+        try:
+            xml_api = dmidecode.dmidecodeXML()
+            xml_api.SetResultType(dmidecode.DMIXML_DOC)
+            xml_doc = xml_api.QueryTypeId(type_id)
+
+            if xml_doc:
+                # Parse XML to extract data
+                data = parse_xml_dmi_data(xml_doc, type_id)
+                xml_doc.freeDoc()
+                if data:
+                    return data
+        except Exception as e:
+            logging.debug(f"XML API query failed for type {type_id}: {e}")
+
+    return None
+
+
+def parse_xml_dmi_data(xml_doc, type_id):
+    """
+    Parse XML DMI data into a Python dictionary.
+
+    This handles raw/OEM types that don't have pymap.xml mappings.
+    """
+    result = {}
+
+    try:
+        # Get root element
+        root = xml_doc.getRootElement()
+        if root is None:
+            return None
+
+        # Find all elements with matching type
+        # The XML structure varies, but typically has dmi elements with type attributes
+        context = xml_doc.xpathNewContext()
+
+        # Try to find nodes by type attribute
+        nodes = context.xpathEval(f"//*[@type='{type_id}']")
+        if not nodes:
+            # Try decimal format
+            nodes = context.xpathEval(f"//*[@type='{type_id}' or @dmitype='{type_id}']")
+
+        for node in nodes:
+            handle = node.prop('handle') or f'0x{type_id:04X}'
+
+            entry = {
+                'dmi_type': type_id,
+                'dmi_handle': handle,
+                'dmi_size': int(node.prop('size') or 0),
+                'data': {}
+            }
+
+            # Extract all child elements as data
+            child = node.children
+            strings = []
+            raw_bytes = []
+
+            while child:
+                if child.type == 'element':
+                    name = child.name
+                    content = child.content
+
+                    if content and content.strip():
+                        # Check if it's a string record
+                        if name == 'Record' or name == 'String':
+                            index = child.prop('index') or str(len(strings) + 1)
+                            strings.append(content.strip())
+                        elif name == 'RawBytes' or name == 'Data':
+                            raw_bytes.append(content.strip())
+                        else:
+                            entry['data'][name] = content.strip()
+
+                    # Also check for attributes on child elements
+                    if child.properties:
+                        prop = child.properties
+                        while prop:
+                            if prop.content:
+                                entry['data'][f'{name}_{prop.name}'] = prop.content
+                            prop = prop.next
+
+                child = child.next
+
+            # Add strings if found
+            if strings:
+                entry['data']['Strings'] = {str(i+1): s for i, s in enumerate(strings)}
+
+            # Add raw bytes if found
+            if raw_bytes:
+                entry['data']['Raw Data'] = ' '.join(raw_bytes)
+
+            result[handle] = entry
+
+        context.xpathFreeContext()
+
+    except Exception as e:
+        logging.debug(f"Error parsing XML for type {type_id}: {e}")
+
+    return result if result else None
+
+
+def query_oem_type_raw(type_id):
+    """
+    Query an OEM type and return raw data even if no mapping exists.
+
+    This function tries multiple approaches to get OEM data:
+    1. Standard QueryTypeId
+    2. XML API with parsing
+    3. Raw XML content extraction
+    """
+    # Try standard API first
+    try:
+        data = dmidecode.QueryTypeId(type_id)
+        if data:
+            return decode_bytes(data)
+    except Exception:
+        pass
+
+    # Try XML API
+    if HAS_LIBXML2:
+        try:
+            xml_api = dmidecode.dmidecodeXML()
+            xml_api.SetResultType(dmidecode.DMIXML_DOC)
+            xml_doc = xml_api.QueryTypeId(type_id)
+
+            if xml_doc:
+                result = {}
+                root = xml_doc.getRootElement()
+
+                if root:
+                    # Try to get serialized content
+                    xml_str = xml_doc.serialize('utf-8')
+
+                    # Parse the XML string to extract useful data
+                    if xml_str and len(xml_str) > 100:  # Has meaningful content
+                        result = extract_data_from_xml_string(xml_str, type_id)
+
+                xml_doc.freeDoc()
+
+                if result:
+                    return result
+        except Exception as e:
+            logging.debug(f"OEM type {type_id} XML query failed: {e}")
+
+    return None
+
+
+def extract_data_from_xml_string(xml_str, type_id):
+    """
+    Extract data from XML string for OEM types.
+
+    Parses XML string and extracts handle, size, and any data fields.
+    """
+    import re
+    result = {}
+
+    # Ensure we're working with a string
+    if isinstance(xml_str, bytes):
+        xml_str = xml_str.decode('utf-8', errors='replace')
+
+    # Find all handles in the XML
+    handle_pattern = r'handle="(0x[0-9A-Fa-f]+)"'
+    handles = re.findall(handle_pattern, xml_str)
+
+    # Find type and size
+    type_pattern = rf'type="{type_id}"[^>]*size="(\d+)"'
+    sizes = re.findall(type_pattern, xml_str)
+
+    # Find any string records
+    string_pattern = r'<Record[^>]*index="(\d+)"[^>]*>([^<]+)</Record>'
+    strings = re.findall(string_pattern, xml_str)
+
+    # Find raw data content
+    raw_pattern = r'<RawData>([^<]+)</RawData>|<Data>([0-9A-Fa-f\s]+)</Data>'
+    raw_matches = re.findall(raw_pattern, xml_str)
+    raw_data = [m[0] or m[1] for m in raw_matches if m[0] or m[1]]
+
+    # Find any other content tags
+    content_pattern = r'<(\w+)>([^<]+)</\1>'
+    all_content = re.findall(content_pattern, xml_str)
+
+    for i, handle in enumerate(handles):
+        entry = {
+            'dmi_type': type_id,
+            'dmi_handle': handle,
+            'dmi_size': int(sizes[i]) if i < len(sizes) else 0,
+            'data': {}
+        }
+
+        # Add strings
+        if strings:
+            entry['data']['Strings'] = {idx: val.strip() for idx, val in strings}
+
+        # Add raw data
+        if raw_data:
+            entry['data']['Raw Data'] = ' '.join(raw_data)
+
+        # Add other content
+        for tag, content in all_content:
+            if tag not in ('Record', 'RawData', 'Data') and content.strip():
+                entry['data'][tag] = content.strip()
+
+        result[handle] = entry
+
+    return result
+
+
 def setup_logging(debug=False):
     """Configure logging based on debug flag"""
     level = logging.DEBUG if debug else logging.WARNING
@@ -634,7 +866,8 @@ def dump_all_types(output_format='text', show_raw=False, include_oem=True):
 
         for type_id in range(128, 256):
             try:
-                data = dmidecode.QueryTypeId(type_id)
+                # Use XML API fallback for OEM types since they don't have pymap.xml mappings
+                data = query_oem_type_raw(type_id)
 
                 # Only process if we got data
                 if data:
@@ -647,6 +880,7 @@ def dump_all_types(output_format='text', show_raw=False, include_oem=True):
 
             except Exception as e:
                 # Silently skip types that don't exist or error
+                logging.debug(f"Error querying OEM type {type_id}: {e}")
                 continue
 
     dmidecode.log_messages()
@@ -659,6 +893,8 @@ def dump_all_types(output_format='text', show_raw=False, include_oem=True):
         print(f"  Standard types found: {standard_found}")
         if include_oem:
             print(f"  OEM types found: {oem_found}")
+            if not HAS_LIBXML2 and oem_found == 0:
+                print("  Note: libxml2 not available, OEM type parsing limited")
         print(f"  Total types: {standard_found + oem_found}")
 
     if output_format == 'json':
@@ -683,9 +919,13 @@ def dump_oem_types_only(output_format='text', show_raw=False):
     print("DUMPING OEM-SPECIFIC TYPES (128-255)")
     print("=" * 70)
 
+    if not HAS_LIBXML2:
+        print("Note: libxml2 not available - OEM type parsing may be limited")
+
     for type_id in range(128, 256):
         try:
-            data = dmidecode.QueryTypeId(type_id)
+            # Use XML API fallback for OEM types since they don't have pymap.xml mappings
+            data = query_oem_type_raw(type_id)
 
             # Only process if we got data
             if data:
@@ -698,6 +938,7 @@ def dump_oem_types_only(output_format='text', show_raw=False):
 
         except Exception as e:
             # Silently skip types that don't exist or error
+            logging.debug(f"Error querying OEM type {type_id}: {e}")
             continue
 
     dmidecode.log_messages()
@@ -705,6 +946,9 @@ def dump_oem_types_only(output_format='text', show_raw=False):
     if output_format == 'text':
         if oem_found == 0:
             print("\n  (No OEM-specific types found)")
+            print("  This may indicate:")
+            print("    - No OEM types exist on this system")
+            print("    - The DMI data source doesn't contain OEM structures")
         else:
             print(f"\n  Total OEM types found: {oem_found}")
 
@@ -1010,7 +1254,12 @@ DMI Type Ranges:
 
             for type_id in specific_types:
                 try:
-                    data = dmidecode.QueryTypeId(type_id)
+                    # Use XML fallback for OEM types (128-255)
+                    if is_oem_type(type_id):
+                        data = query_oem_type_raw(type_id)
+                    else:
+                        data = dmidecode.QueryTypeId(type_id)
+
                     if data:
                         data = decode_bytes(data)
                         all_data[type_id] = data
