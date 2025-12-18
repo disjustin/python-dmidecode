@@ -44,6 +44,7 @@ Usage:
 """
 
 import dmidecode
+import libxml2
 import sys
 import os
 import json
@@ -128,6 +129,72 @@ def decode_bytes(obj):
         return tuple(decode_bytes(item) for item in obj)
     else:
         return obj
+
+
+def query_oem_type_raw(type_id):
+    """
+    Query OEM-specific DMI types (128-255) and return raw information.
+
+    These types are vendor-specific and may not be fully supported by dmidecode.
+    This function returns the raw data including unsupported type messages.
+
+    Args:
+        type_id: The DMI type ID to query (typically 128-255 for OEM types)
+
+    Returns:
+        A list of dictionaries containing raw OEM type information:
+        - 'handle': The DMI handle
+        - 'type': The DMI type ID
+        - 'size': The size of the data structure
+        - 'unsupported': Boolean indicating if type is unsupported
+        - 'message': Any message from dmidecode about the type
+    """
+    results = []
+
+    # Use XML API to get raw data
+    dmixml = dmidecode.dmidecodeXML()
+    dmixml.SetResultType(dmidecode.DMIXML_DOC)
+
+    xml_doc = dmixml.QueryTypeId(type_id)
+    xml_str = xml_doc.serialize()
+
+    # Handle bytes vs string
+    if isinstance(xml_str, bytes):
+        xml_str = xml_str.decode('utf-8')
+
+    # Parse the XML to extract information
+    doc = libxml2.parseDoc(xml_str)
+    ctx = doc.xpathNewContext()
+
+    # Look for DMImessage nodes (unsupported types)
+    # Note: type attribute is stored as string in XML
+    message_nodes = ctx.xpathEval("//DMImessage[@type='%d']" % type_id)
+    for node in message_nodes:
+        entry = {
+            'handle': node.prop('handle'),
+            'type': int(node.prop('type')) if node.prop('type') else type_id,
+            'size': int(node.prop('size')) if node.prop('size') else None,
+            'unsupported': node.prop('unsupported') == '1',
+            'message': node.content.strip() if node.content else None
+        }
+        results.append(entry)
+
+    # Also look for supported OEM types that might have data
+    oem_nodes = ctx.xpathEval("//dmi[@type='%d']" % type_id)
+    for node in oem_nodes:
+        entry = {
+            'handle': node.prop('handle'),
+            'type': int(node.prop('type')) if node.prop('type') else type_id,
+            'size': int(node.prop('size')) if node.prop('size') else None,
+            'unsupported': False,
+            'raw_xml': node.serialize()
+        }
+        results.append(entry)
+
+    ctx.xpathFreeContext()
+    doc.freeDoc()
+
+    return results
 
 
 def setup_logging(debug=False):
@@ -317,6 +384,49 @@ def dump_all_types(output_format='text', show_raw=False):
     return all_data
 
 
+def dump_oem_types(output_format='text', show_raw=False):
+    """Dump all OEM-specific DMI types (128-255)"""
+    all_data = {}
+
+    print("\n" + "=" * 70)
+    print("DUMPING OEM-SPECIFIC DMI TYPES (128-255)")
+    print("=" * 70)
+
+    for type_id in range(128, 256):  # OEM types 128-255
+        try:
+            oem_data = query_oem_type_raw(type_id)
+
+            if oem_data:
+                all_data[type_id] = oem_data
+
+                if output_format == 'text':
+                    print(f"\n--- OEM Type {type_id} (0x{type_id:02X}) ---")
+                    for entry in oem_data:
+                        print(f"  Handle: {entry.get('handle', 'N/A')}")
+                        print(f"  Size: {entry.get('size', 'N/A')} bytes")
+                        if entry.get('unsupported'):
+                            print(f"  Status: Unsupported by dmidecode")
+                            print(f"  Message: {entry.get('message', 'N/A')}")
+                        else:
+                            print(f"  Status: Supported")
+                            if show_raw and entry.get('raw_xml'):
+                                print(f"  Raw XML:\n{entry.get('raw_xml')}")
+                        print()
+
+        except Exception as e:
+            # Skip types that cause errors
+            continue
+
+    dmidecode.log_messages()
+
+    if output_format == 'json':
+        print(json.dumps(all_data, indent=2, default=str))
+    elif output_format == 'python':
+        pprint(all_data)
+
+    return all_data
+
+
 def print_summary():
     """Print a summary of available DMI information"""
     print("\n" + "=" * 70)
@@ -425,6 +535,9 @@ Examples:
   # Dump all types (0-43) instead of sections
   sudo python3 dump_all_dmi.py --all-types
 
+  # Dump OEM-specific types (128-255)
+  sudo python3 dump_all_dmi.py --oem-types
+
   # Output as JSON
   sudo python3 dump_all_dmi.py --format json > hardware.json
 
@@ -457,6 +570,12 @@ Available sections: bios, system, baseboard, chassis, processor, memory, cache, 
         '--all-types',
         action='store_true',
         help='Dump all DMI types (0-43) instead of sections'
+    )
+
+    parser.add_argument(
+        '--oem-types',
+        action='store_true',
+        help='Dump OEM-specific DMI types (128-255)'
     )
 
     parser.add_argument(
@@ -528,13 +647,15 @@ Available sections: bios, system, baseboard, chassis, processor, memory, cache, 
 
     # Dump data
     try:
-        if args.all_types:
+        if args.oem_types:
+            dump_oem_types(args.format, args.raw)
+        elif args.all_types:
             dump_all_types(args.format, args.raw)
         else:
             dump_all_sections(args.format, sections, args.raw)
 
         # Show summary at the end for text format
-        if args.format == 'text' and not args.summary:
+        if args.format == 'text' and not args.summary and not args.oem_types:
             print_summary()
 
         return 0
