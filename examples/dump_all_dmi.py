@@ -167,9 +167,6 @@ DMI_SECTIONS = {
     'cache': (7,),  # Cache
     'connector': (8,),  # Port Connector
     'slot': (9,),  # System Slots
-    'power': (22, 25, 26, 27, 28, 29, 39),  # Battery, Power Controls, Probes, Power Supply
-    'security': (21, 24, 30, 43),  # Pointing Device, Hardware Security, Remote Access, TPM
-    'management': (34, 35, 36, 38, 40, 42),  # Management Device/Component/Threshold, IPMI, Additional Info, MC Host Interface
 }
 
 
@@ -212,11 +209,13 @@ def is_oem_type(type_id):
 def format_hex_dump(data, bytes_per_line=16):
     """Format binary data as a hex dump with ASCII representation"""
     if isinstance(data, str):
-        # Try to interpret as hex string
+        # Clean and convert hex string to bytes
+        data = data.replace('\n', ' ').replace('\t', ' ').strip()
+        hex_parts = [x for x in data.split() if x]  # Split into hex pairs
         try:
-            data = bytes.fromhex(data.replace(' ', '').replace('\n', ''))
+            data = bytes(int(x, 16) for x in hex_parts)
         except ValueError:
-            data = data.encode('utf-8', errors='replace')
+            return f"Invalid hex data: {data[:100]}..."  # Fallback for bad data
     elif not isinstance(data, (bytes, bytearray)):
         return str(data)
 
@@ -225,7 +224,7 @@ def format_hex_dump(data, bytes_per_line=16):
         chunk = data[i:i + bytes_per_line]
         hex_part = ' '.join(f'{b:02X}' for b in chunk)
         ascii_part = ''.join(chr(b) if 32 <= b < 127 else '.' for b in chunk)
-        lines.append(f"    {i:04X}: {hex_part:<{bytes_per_line * 3}}  {ascii_part}")
+        lines.append(f"    {i:08X}: {hex_part:<47}  {ascii_part}")
     return '\n'.join(lines)
 
 
@@ -651,7 +650,15 @@ def clear_warnings_if_not_debug():
 def log_messages_if_debug():
     """Log messages from dmidecode only if in debug mode, otherwise clear them"""
     if DEBUG_MODE:
-        log_messages_if_debug()
+        warnings = dmidecode.get_warnings()
+        if warnings:
+            print("\n" + "=" * 70)
+            print("DMIDECODE LOG MESSAGES")
+            print("=" * 70)
+            for msg in warnings:
+                print(f"WARNING: {msg}")
+            for msg in errors:
+                print(f"ERROR: {msg}")
     else:
         dmidecode.clear_warnings()
         dmidecode.clear_debug()
