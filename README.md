@@ -2,6 +2,62 @@
 
 Python module for reading DMI/SMBIOS data with JSON export support.
 
+## Table of Contents
+
+- [dmidecode](#dmidecode)
+  - [Table of Contents](#table-of-contents)
+  - [Description](#description)
+  - [Features](#features)
+  - [Requirements](#requirements)
+    - [Build Requirements](#build-requirements)
+    - [Runtime Requirements](#runtime-requirements)
+  - [Installation](#installation)
+    - [Prerequisites](#prerequisites)
+    - [From Source](#from-source)
+    - [Building with Specific Python Version](#building-with-specific-python-version)
+    - [Uninstall](#uninstall)
+  - [Usage](#usage)
+    - [Basic Usage](#basic-usage)
+    - [Query by DMI Type ID](#query-by-dmi-type-id)
+    - [JSON Export](#json-export)
+    - [High-Level Hardware Info](#high-level-hardware-info)
+    - [OEM Type Support](#oem-type-support)
+    - [DMI Type Constants](#dmi-type-constants)
+    - [Creating and Using DMI Dumps](#creating-and-using-dmi-dumps)
+    - [Available Sections](#available-sections)
+  - [API Reference](#api-reference)
+    - [Core Functions](#core-functions)
+      - [`QuerySection(section_name)`](#querysectionsection_name)
+      - [`QueryTypeId(type_id)`](#querytypeidtype_id)
+      - [`dump()`](#dump)
+      - [`set_dev(device)` / `get_dev()`](#set_devdevice--get_dev)
+    - [JSON Functions](#json-functions)
+      - [`get_section_json(section, pretty=False)`](#get_section_jsonsection-prettyfalse)
+      - [`get_type_json(type_id, pretty=False)`](#get_type_jsontype_id-prettyfalse)
+      - [`get_all_json(include_oem=False, pretty=False)`](#get_all_jsoninclude_oemfalse-prettyfalse)
+      - [`export_json(filepath, include_oem=False, pretty=True)`](#export_jsonfilepath-include_oemfalse-prettytrue)
+    - [High-Level Functions](#high-level-functions)
+      - [`get_hardware_info()`](#get_hardware_info)
+      - [`get_oem_types()`](#get_oem_types)
+      - [`list_available_types()`](#list_available_types)
+    - [Helper Functions](#helper-functions)
+      - [`get_type_name(type_id)`](#get_type_nametype_id)
+      - [`is_oem_type(type_id)` / `is_standard_type(type_id)`](#is_oem_typetype_id--is_standard_typetype_id)
+    - [Logging](#logging)
+      - [`enable_auto_logging(level=logging.WARNING)`](#enable_auto_logginglevelloggingwarning)
+      - [`disable_auto_logging()`](#disable_auto_logging)
+      - [`get_warnings()` / `clear_warnings()`](#get_warnings--clear_warnings)
+      - [`get_debug()` / `clear_debug()`](#get_debug--clear_debug)
+  - [Examples](#examples)
+  - [Troubleshooting](#troubleshooting)
+    - [Permission Denied](#permission-denied)
+    - [Module Not Found](#module-not-found)
+    - [No SMBIOS Entry Point](#no-smbios-entry-point)
+  - [License](#license)
+  - [Authors](#authors)
+  - [Version](#version)
+
+
 ## Description
 
 dmidecode is a Python module that provides access to Desktop Management Interface (DMI) and System Management BIOS (SMBIOS) data. DMI/SMBIOS is a standard mechanism for system hardware and firmware to communicate their characteristics to system management software. This module allows Python scripts to query detailed hardware information and export it to JSON format.
@@ -57,20 +113,20 @@ git clone https://github.com/nima/python-dmidecode.git
 cd python-dmidecode
 ```
 
-2. Build the module:
+1. Build the module:
 
 ```bash
 make clean
 make
 ```
 
-3. Install (requires root):
+1. Install (requires root):
 
 ```bash
 sudo make install
 ```
 
-4. Verify installation:
+1. Verify installation:
 
 ```bash
 python3 -c "import dmidecode; print(dmidecode.version)"
@@ -144,7 +200,7 @@ processor_json = dmidecode.get_type_json(4, pretty=True)
 all_json = dmidecode.get_all_json(include_oem=True, pretty=True)
 
 # Export to file
-dmidecode.export_json('/path/to/output.json', include_oem=True)
+dmidecode.export_json('dmidecode-1.json', include_oem=True)
 ```
 
 ### High-Level Hardware Info
@@ -241,68 +297,88 @@ bios = dmidecode.QuerySection('bios')
 ### Core Functions
 
 #### `QuerySection(section_name)`
+
 Query DMI data by section name.
+
 - **Parameters**: section_name (str) - 'all', 'bios', 'system', 'baseboard', 'chassis', 'processor', 'memory', 'cache', 'connector', 'slot'
 - **Returns**: Dictionary containing DMI data
 
 #### `QueryTypeId(type_id)`
+
 Query DMI data by type ID.
+
 - **Parameters**: type_id (int) - DMI type ID (0-255)
 - **Returns**: Dictionary containing DMI data
 
 #### `dump()`
+
 Create a dump of DMI data to file.
+
 - **Returns**: Status string
 - **Requires**: Root privileges
 
 #### `set_dev(device)` / `get_dev()`
+
 Set/get the device or dump file path.
 
 ### JSON Functions
 
 #### `get_section_json(section, pretty=False)`
+
 Get section data as JSON string.
 
 #### `get_type_json(type_id, pretty=False)`
+
 Get type data as JSON string.
 
 #### `get_all_json(include_oem=False, pretty=False)`
+
 Get all DMI data as JSON string.
 
 #### `export_json(filepath, include_oem=False, pretty=True)`
+
 Export all DMI data to a JSON file.
 
 ### High-Level Functions
 
 #### `get_hardware_info()`
+
 Get summary of system, BIOS, processor, and memory information.
 
 #### `get_oem_types()`
+
 Get all OEM types (128-255) present on the system.
 
 #### `list_available_types()`
+
 List all available DMI types on the system.
 
 ### Helper Functions
 
 #### `get_type_name(type_id)`
+
 Get human-readable name for a DMI type ID.
 
 #### `is_oem_type(type_id)` / `is_standard_type(type_id)`
+
 Check if type ID is OEM (128-255) or standard (0-46).
 
 ### Logging
 
 #### `enable_auto_logging(level=logging.WARNING)`
+
 Enable automatic logging of warnings and debug messages.
 
 #### `disable_auto_logging()`
+
 Disable automatic logging.
 
 #### `get_warnings()` / `clear_warnings()`
+
 Get/clear warning messages.
 
 #### `get_debug()` / `clear_debug()`
+
 Get/clear debug messages.
 
 ## Examples
@@ -324,20 +400,25 @@ python3 examples/test_dmidecode_features.py --dump-file dmidata.dump
 ## Troubleshooting
 
 ### Permission Denied
+
 Run as root or create a dump file first:
+
 ```bash
 sudo python3 -c "import dmidecode; dmidecode.dump()"
 python3 your_script.py  # Now works without root
 ```
 
 ### Module Not Found
+
 Ensure the module is installed:
+
 ```bash
 sudo make install
 python3 -c "import dmidecode; print('OK')"
 ```
 
 ### No SMBIOS Entry Point
+
 Your system may not have DMI/SMBIOS support, or you're running in a VM that doesn't expose it.
 
 ## License
