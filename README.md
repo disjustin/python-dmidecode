@@ -55,6 +55,8 @@ Python module for reading DMI/SMBIOS data with JSON export support.
     - [No SMBIOS Entry Point](#no-smbios-entry-point)
   - [License](#license)
   - [Authors](#authors)
+  - [Contributing](#contributing)
+  - [Links](#links)
   - [Version](#version)
 
 
@@ -425,11 +427,34 @@ Your system may not have DMI/SMBIOS support, or you're running in a VM that does
 
 GNU General Public License version 2 (GPLv2)
 
+See the LICENSE file for details.
+
 ## Authors
 
 - Nima Talebi - Original author
 - David Sommerseth - Maintainer
+- See doc/AUTHORS for complete list of contributors
+
+## Contributing
+
+Contributions are welcome! Please ensure:
+
+1. Code follows existing style
+2. All tests pass
+3. New features include tests
+4. Documentation is updated
+
+Join the discussion mailing list:
+<http://lists.nongnu.org/mailman/listinfo/dmidecode-devel>
+
+## Links
+
+- Project Page: <http://projects.autonomy.net.au/python-dmidecode/>
+- Upstream dmidecode: <http://www.nongnu.org/dmidecode/>
+- Bug Reports: Use GitHub issues or contact maintainers
 
 ## Version
 
 Current version: 3.12.3
+
+See doc/changelog for detailed version history.
