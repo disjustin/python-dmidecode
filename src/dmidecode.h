@@ -1,8 +1,7 @@
-
 /*
  * This file is part of the dmidecode project.
  *
- *   (C) 2005-2007 Jean Delvare <khali@linux-fr.org>
+ *   Copyright (C) 2005-2025 Jean Delvare <jdelvare@suse.de>
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -19,37 +18,45 @@
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  */
 
-#include <libxml/tree.h>
-#include "dmihelper.h"
-#include "dmierror.h"
+#ifndef DMIDECODE_H
+#define DMIDECODE_H
 
-#define FLAG_NO_FILE_OFFSET     (1 << 0)
-#define FLAG_STOP_AT_EOT        (1 << 1)
+#include "types.h"
 
-#define SYS_FIRMWARE_DIR "/sys/firmware/dmi/tables"
-#define SYS_ENTRY_FILE SYS_FIRMWARE_DIR "/smbios_entry_point"
-#define SYS_TABLE_FILE SYS_FIRMWARE_DIR "/DMI"
+#define out_of_spec "<OUT OF SPEC>"
 
-struct dmi_header {
-        u8 type;
-        u8 length;
-        u16 handle;
-        u8 *data;
+struct dmi_header
+{
+	u8 type;
+	u8 length;
+	u16 handle;
+	u8 *data;
 };
 
+enum cpuid_type
+{
+	cpuid_none,
+	cpuid_80386,
+	cpuid_80486,
+	cpuid_arm_legacy,
+	cpuid_arm_soc_id,
+	cpuid_x86_intel,
+	cpuid_x86_amd,
+	cpuid_loongarch,
+};
+
+extern enum cpuid_type cpuid_type;
+
 int is_printable(const u8 *data, int len);
-void dmi_dump(xmlNode *node, struct dmi_header *h);
-xmlNode *dmi_decode(xmlNode *parent_n, dmi_codes_major *dmiMajor, struct dmi_header * h, u16 ver);
-void to_dmi_header(struct dmi_header *h, u8 * data);
-
-xmlNode *smbios3_decode_get_version(u8 * buf, const char *devmem);
-xmlNode *smbios_decode_get_version(u8 * buf, const char *devmem);
-xmlNode *legacy_decode_get_version(u8 * buf, const char *devmem);
-int smbios3_decode(Log_t *logp, int type, u8 *buf, const char *devmem, u32 flags, xmlNode *xmlnode);
-int smbios_decode(Log_t *logp, int type, u8 *buf, const char *devmem, u32 flags, xmlNode *xmlnode);
-int legacy_decode(Log_t *logp, int type, u8 *buf, const char *devmem, u32 flags, xmlNode *xmlnode);
-
 const char *dmi_string(const struct dmi_header *dm, u8 s);
-void dmi_system_uuid(xmlNode *node, const u8 * p, u16 ver);
-void dmi_chassis_type(xmlNode *node, u8 code);
-int dmi_processor_frequency(const u8 * p);
+void dmi_print_memory_size(void (*print_cb)(const char *name, const char *format, ...),
+			   const char *attr, u64 code, int shift);
+void dmi_print_storage_size(const char *attr, u64 code, unsigned int shift);
+void dmi_print_cpuid(void (*print_cb)(const char *name, const char *format, ...),
+		     const char *label, enum cpuid_type sig, const u8 *p);
+void dmi_memory_manufacturer_id(const char *attr, u16 code);
+void dmi_memory_product_id(const char *attr, u16 code);
+void dmi_system_uuid(void (*print_cb)(const char *name, const char *format, ...),
+		     const char *attr, const u8 *p, u16 ver);
+
+#endif

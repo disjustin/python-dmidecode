@@ -1,8 +1,8 @@
 /*
- * Decoding of OEM-specific entries
+ * Generic output functions
  * This file is part of the dmidecode project.
  *
- *   Copyright (C) 2007-2008 Jean Delvare <jdelvare@suse.de>
+ *   Copyright (C) 2020 Jean Delvare <jdelvare@suse.de>
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -19,9 +19,16 @@
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  */
 
-#include "types.h"
+#include "dmidecode.h"
 
-struct dmi_header;
-
-void dmi_set_vendor(const char *s, const char *p);
-int dmi_decode_oem(const struct dmi_header *h, u16 ver);
+void pr_comment(const char *format, ...);
+void pr_info(const char *format, ...);
+void pr_handle(const struct dmi_header *h);
+void pr_handle_name(const char *format, ...);
+void pr_attr(const char *name, const char *format, ...);
+void pr_subattr(const char *name, const char *format, ...);
+void pr_list_start(const char *name, const char *format, ...);
+void pr_list_item(const char *format, ...);
+void pr_list_end(void);
+void pr_sep(void);
+void pr_struct_err(const char *format, ...);

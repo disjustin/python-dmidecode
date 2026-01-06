@@ -1,8 +1,8 @@
 /*
- * Decoding of OEM-specific entries
+ * Command line handling of dmidecode
  * This file is part of the dmidecode project.
  *
- *   Copyright (C) 2007-2008 Jean Delvare <jdelvare@suse.de>
+ *   Copyright (C) 2005-2023 Jean Delvare <jdelvare@suse.de>
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -21,7 +21,33 @@
 
 #include "types.h"
 
-struct dmi_header;
+struct string_keyword
+{
+	const char *keyword;
+	u8 type;
+	u8 offset;
+};
 
-void dmi_set_vendor(const char *s, const char *p);
-int dmi_decode_oem(const struct dmi_header *h, u16 ver);
+struct opt
+{
+	const char *devmem;
+	unsigned int flags;
+	u8 *type;
+	const struct string_keyword *string;
+	char *dumpfile;
+	u32 handle;
+};
+extern struct opt opt;
+
+#define FLAG_VERSION            (1 << 0)
+#define FLAG_HELP               (1 << 1)
+#define FLAG_DUMP               (1 << 2)
+#define FLAG_QUIET              (1 << 3)
+#define FLAG_DUMP_BIN           (1 << 4)
+#define FLAG_FROM_DUMP          (1 << 5)
+#define FLAG_NO_SYSFS           (1 << 6)
+#define FLAG_NO_QUIRKS          (1 << 7)
+#define FLAG_LIST               (1 << 8)
+
+int parse_command_line(int argc, char * const argv[]);
+void print_help(void);
