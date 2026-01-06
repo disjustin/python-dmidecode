@@ -27,9 +27,6 @@
 
 #ifndef _EFI_H
 #define _EFI_H
-
-#include "dmilog.h"
-
 #define EFI_NOT_FOUND   (-1)
 #define EFI_NO_SMBIOS   (-2)
 

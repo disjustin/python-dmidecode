@@ -70,7 +70,8 @@ setup(
         "src/dmilog.c",
         "src/xmlpythonizer.c",
         "src/efi.c",
-        "src/dmidump.c"
+        "src/dmidump.c",
+        "src/libxml_stubs.c"
       ],
       include_dirs = incdir,
       library_dirs = libdir,

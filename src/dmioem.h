@@ -1,8 +1,9 @@
+
 /*
  * Decoding of OEM-specific entries
  * This file is part of the dmidecode project.
  *
- *   Copyright (C) 2007-2008 Jean Delvare <jdelvare@suse.de>
+ *   (C) 2007 Jean Delvare <khali@linux-fr.org>
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -19,9 +20,7 @@
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  */
 
-#include "types.h"
-
 struct dmi_header;
 
-void dmi_set_vendor(const char *s, const char *p);
-int dmi_decode_oem(const struct dmi_header *h, u16 ver);
+void dmi_set_vendor(const struct dmi_header *h);
+int dmi_decode_oem(struct dmi_header *h);

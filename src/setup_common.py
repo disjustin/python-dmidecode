@@ -53,8 +53,6 @@ def libxml2_lib(libdir, libs):
     libdir.append(get_python_lib(1))
     if os_path.exists("/etc/debian_version"): #. XXX: Debian Workaround...
         libdir.append("/usr/lib/pymodules/python%d.%d"%sys.version_info[0:2])
-    # Add the python3 dist-packages directory where libxml2mod is located
-    libdir.append("/usr/lib/python3/dist-packages")
 
     (res, libxml2_libs) = subprocess.getstatusoutput("xml2-config --libs")
     if res != 0:
@@ -69,22 +67,6 @@ def libxml2_lib(libdir, libs):
             libdir.append(l.replace("-L", "", 1))
         elif l.find('-l') == 0:
             libs.append(l.replace("-l", "", 1))
-
-    # Add the libxml2mod Python module library with full name for version-specific linking
-    import glob
-    xml2mod_files = glob.glob("/usr/lib/python3/dist-packages/libxml2mod.cpython-*.so")
-    if xml2mod_files:
-        # Extract the library name without 'lib' prefix and '.so' suffix
-        import os
-        libname = os.path.basename(xml2mod_files[0])
-        if libname.startswith('lib'):
-            libname = libname[3:]
-        if libname.endswith('.so'):
-            libname = libname[:-3]
-        libs.append(':' + os.path.basename(xml2mod_files[0]))  # Use exact filename with : prefix
-    else:
-        # Fallback for older systems
-        libs.append('xml2mod')
 
 
 

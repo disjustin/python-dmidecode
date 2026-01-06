@@ -77,7 +77,7 @@ void dmi_table(off_t base, u32 len, u16 num, u32 ver, const char *devmem,
         u8 *buf;
         size_t size = len;
 
-        buf = read_file(flags & FLAG_NO_FILE_OFFSET ? 0 : base,
+        buf = read_file(NULL, flags & FLAG_NO_FILE_OFFSET ? 0 : base,
                         &size, devmem);
         len = size;
 
@@ -99,7 +99,7 @@ static int smbios3_decode(u8 *buf, const char *devmem, u32 flags, const char *du
         if (!checksum(buf, buf[0x06]))
                 return 0;
 
-        dmi_table((off_t)offset, DWORD(buf + 0x0C), 0, ver, devmem, flags | FLAG_STOP_AT_EOT, dumpfile);
+        dmi_table(((off_t)offset.h << 32) | offset.l,DWORD(buf + 0x0C), 0, ver, devmem, flags | FLAG_STOP_AT_EOT, dumpfile);
 
         u8 crafted[32];
         memcpy(crafted, buf, 32);
@@ -174,7 +174,7 @@ int dump(const char *memdev, const char *dumpfile)
          * the largest one, then determine what type it contains.
          */
         size = 0x20;
-        if ( (buf = read_file(0, &size, SYS_ENTRY_FILE)) != NULL){
+        if ( (buf = read_file(NULL, 0, &size, SYS_ENTRY_FILE)) != NULL){
                 if (size >= 24 && memcmp(buf, "_SM3_", 5) == 0){
                         if (smbios3_decode(buf, SYS_TABLE_FILE, FLAG_NO_FILE_OFFSET, dumpfile))
                                 found++;
@@ -192,7 +192,7 @@ int dump(const char *memdev, const char *dumpfile)
         }
 
         /* First try EFI (ia64, Intel-based Mac) */
-        efi = address_from_efi(NULL, &fp);  /* NULL for logp since we don't log in dmidump */
+        efi = address_from_efi(NULL, &fp);
         switch(efi)
         {
                 case EFI_NOT_FOUND:
@@ -202,7 +202,7 @@ int dump(const char *memdev, const char *dumpfile)
                         goto exit_free;
         }
 
-        if ((buf = mem_chunk(fp, 0x20, memdev)) == NULL){
+        if ((buf = mem_chunk(NULL, fp, 0x20, memdev )) == NULL){
                 ret = 1;
                 goto exit_free;
         }
@@ -219,7 +219,7 @@ int dump(const char *memdev, const char *dumpfile)
 memory_scan:
 #if defined __i386__ || defined __x86_64__
         /* Fallback to memory scan (x86, x86_64) */
-        if((buf = mem_chunk(0xF0000, 0x10000, memdev)) == NULL) {
+        if((buf = mem_chunk(NULL, 0xF0000, 0x10000, memdev)) == NULL) {
                 ret = 1;
                 goto exit_free;
         }
