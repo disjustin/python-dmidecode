@@ -49,7 +49,7 @@ macros = get_macros()
 #
 
 setup(
-  name = "python-dmidecode",
+  name = "dmidecode",
   version = dmidec_version,
   license='GPL-2',
   description = "Python extension module for dmidecode",
@@ -59,7 +59,7 @@ setup(
   data_files = [ ('share/python-dmidecode', ['src/pymap.xml']) ],
   ext_modules = [
     Extension(
-      "dmidecodemod",
+      "_dmidecode",
       sources      = [
         "src/dmidecodemodule.c",
         "src/util.c",
@@ -70,7 +70,8 @@ setup(
         "src/dmilog.c",
         "src/xmlpythonizer.c",
         "src/efi.c",
-        "src/dmidump.c"
+        "src/dmidump.c",
+        "src/libxml_stubs.c"
       ],
       include_dirs = incdir,
       library_dirs = libdir,

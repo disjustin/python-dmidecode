@@ -68,9 +68,6 @@ def libxml2_lib(libdir, libs):
         elif l.find('-l') == 0:
             libs.append(l.replace("-l", "", 1))
 
-    # this library is not reported and we need it anyway
-    libs.append('xml2mod')
-
 
 
 # Get version from src/version.h

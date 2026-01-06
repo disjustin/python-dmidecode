@@ -418,7 +418,7 @@ xmlNode* load_mappingxml(options *opt) {
                 // Load mapping into memory
                 opt->mappingxml = xmlReadFile(opt->python_xml_map, NULL, 0);
                 if( opt->mappingxml == NULL ) {
-                        PyReturnError(PyExc_IOError, "Could not open tje XML mapping file '%s'",
+                        PyReturnError(PyExc_IOError, "Could not open the XML mapping file '%s'",
                                       opt->python_xml_map);
                 }
        }
@@ -1000,7 +1000,7 @@ void destruct_options(void *ptr)
 #ifdef IS_PY3K
 static struct PyModuleDef dmidecodemod_def = {
     PyModuleDef_HEAD_INIT,
-    "dmidecodemod",
+    "_dmidecode",
     NULL,
     -1,
     DMIDataMethods,
@@ -1011,10 +1011,10 @@ static struct PyModuleDef dmidecodemod_def = {
 };
 
 PyMODINIT_FUNC
-PyInit_dmidecodemod(void)
+PyInit__dmidecode(void)
 #else
 PyMODINIT_FUNC
-initdmidecodemod(void)
+init_dmidecode(void)
 #endif
 {
         char *dmiver = NULL;
@@ -1034,7 +1034,7 @@ initdmidecodemod(void)
 #ifdef IS_PY3K
         module = PyModule_Create(&dmidecodemod_def);
 #else
-        module = Py_InitModule3((char *)"dmidecodemod", DMIDataMethods,
+        module = Py_InitModule3((char *)"_dmidecode", DMIDataMethods,
                                 "Python extension module for dmidecode");
 #endif
         if (module == NULL) {
