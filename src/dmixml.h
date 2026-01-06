@@ -29,6 +29,7 @@
 #include <stdarg.h>
 #include <libxml/tree.h>
 #include <libxml/xpath.h>
+#include "dmilog.h"
 
 #define foreach_xmlnode(n, itn) for( itn = n; itn != NULL; itn = itn->next )
 

@@ -74,6 +74,5 @@ extern int legacy_decode(Log_t *logp, int type, u8 *buf, const char *devmem, u32
 extern xmlNode *smbios3_decode_get_version(u8 * buf, const char *devmem);
 extern xmlNode *smbios_decode_get_version(u8 * buf, const char *devmem);
 extern xmlNode *legacy_decode_get_version(u8 * buf, const char *devmem);
-extern void *mem_chunk(Log_t *logp, size_t base, size_t len, const char *devmem);
 
 PyMODINIT_FUNC initdmidecode(void);

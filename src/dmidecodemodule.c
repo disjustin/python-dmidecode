@@ -143,7 +143,7 @@ xmlNode *dmidecode_get_version(options *opt)
         /* Read from dump if so instructed */
         if(opt->dumpfile != NULL) {
                 //. printf("Reading SMBIOS/DMI data from file %s.\n", dumpfile);
-                if((buf = mem_chunk(opt->logdata, 0, 0x20, opt->dumpfile)) != NULL) {
+                if((buf = mem_chunk(0, 0x20, opt->dumpfile)) != NULL) {
                         if (memcmp(buf, "_SM3_", 5) == 0) {
                                 ver_n = smbios3_decode_get_version(buf, opt->dumpfile);
                                 if (dmixml_GetAttrValue(ver_n, "unknown") == NULL)
@@ -170,7 +170,7 @@ xmlNode *dmidecode_get_version(options *opt)
          * the largest one, then determine what type it contains.
          */
         size = 0x20;
-	if ( (buf = read_file(opt->logdata, 0, &size, SYS_ENTRY_FILE)) != NULL ){
+	if ( (buf = read_file(0, &size, SYS_ENTRY_FILE)) != NULL ){
 		if(size >= 24 && memcmp(buf, "_SM3_", 5) == 0){
 			ver_n = smbios3_decode_get_version(buf, opt->devmem);
 			if (dmixml_GetAttrValue(ver_n, "unknown") == NULL)
@@ -203,7 +203,7 @@ xmlNode *dmidecode_get_version(options *opt)
 			goto exit_free;
 	}
 
-	if((buf = mem_chunk(opt->logdata, fp, 0x20, opt->devmem)) == NULL){
+	if((buf = mem_chunk(fp, 0x20, opt->devmem)) == NULL){
 		ver_n = NULL;
 		goto exit_free;
 	}
@@ -223,7 +223,7 @@ xmlNode *dmidecode_get_version(options *opt)
 memory_scan:
 #if defined __i386__ || defined __x86_64__
 	/* Fallback to memory scan (x86, x86_64) */
-	if((buf = mem_chunk(opt->logdata, 0xF0000, 0x10000, opt->devmem)) == NULL) {
+	if((buf = mem_chunk(0xF0000, 0x10000, opt->devmem)) == NULL) {
 		ver_n = NULL;
 		goto exit_free;
 	}
@@ -296,7 +296,7 @@ int dmidecode_get_xml(options *opt, xmlNode* dmixml_n)
 
         /* Read from dump if so instructed */
         if(opt->dumpfile != NULL) {
-		if((buf = mem_chunk(opt->logdata, 0, 0x20, opt->dumpfile)) == NULL) {
+		if((buf = mem_chunk(0, 0x20, opt->dumpfile)) == NULL) {
 			ret = 1;
 			goto exit_free;
 		}
@@ -319,7 +319,7 @@ int dmidecode_get_xml(options *opt, xmlNode* dmixml_n)
          * the largest one, then determine what type it contains.
          */
 	size = 0x20;
-	if ( (buf = read_file(opt->logdata, 0, &size, SYS_ENTRY_FILE)) != NULL){
+	if ( (buf = read_file(0, &size, SYS_ENTRY_FILE)) != NULL){
 		if ( size >= 24 &&  memcmp(buf, "_SM3_", 5) == 0) {
 			if (smbios3_decode(opt->logdata, opt->type, buf, SYS_TABLE_FILE, FLAG_NO_FILE_OFFSET, dmixml_n))
 				found++;
@@ -347,7 +347,7 @@ int dmidecode_get_xml(options *opt, xmlNode* dmixml_n)
 			goto exit_free;
 	}
 
-	if((buf = mem_chunk(opt->logdata, fp, 0x20, opt->devmem)) == NULL ){
+	if((buf = mem_chunk(fp, 0x20, opt->devmem)) == NULL ){
 		ret = 1;
 		goto exit_free;
 	}
@@ -364,7 +364,7 @@ int dmidecode_get_xml(options *opt, xmlNode* dmixml_n)
 
 memory_scan:
 #if defined __i386__ || defined __x86_64__
-        if((buf = mem_chunk(opt->logdata, 0xF0000, 0x10000, opt->devmem)) == NULL)
+        if((buf = mem_chunk(0xF0000, 0x10000, opt->devmem)) == NULL)
         {
                 ret = 1;
                 goto exit_free;
@@ -479,7 +479,7 @@ xmlNode *__dmidecode_xml_getsection(options *opt, const char *section) {
                 if(opt->type == -1) {
                         char *err = log_retrieve(opt->logdata, LOG_ERR);
                         log_clear_partial(opt->logdata, LOG_ERR, 0);
-                        _pyReturnError(PyExc_RuntimeError, "Invalid type id '%s' -- %s", typeid, err);
+                        _pyReturnError(PyExc_RuntimeError, __FILE__, __LINE__, "Invalid type id '%s' -- %s", typeid, err);
                         free(err);
                         return NULL;
                 }
@@ -936,7 +936,7 @@ static PyMethodDef DMIDataMethods[] = {
         {(char *)"pythonmap", dmidecode_set_pythonxmlmap, METH_O,
          (char *) "Use another python dict map definition. The default file is " PYTHON_XML_MAP},
 
-        {(char *)"xmlapi", dmidecode_xmlapi, METH_VARARGS | METH_KEYWORDS,
+        {(char *)"xmlapi", (PyCFunction)dmidecode_xmlapi, METH_VARARGS | METH_KEYWORDS,
          (char *) "Internal API for retrieving data as raw XML data"},
 
 
@@ -955,11 +955,9 @@ static PyMethodDef DMIDataMethods[] = {
         {NULL, NULL, 0, NULL}
 };
 
-void destruct_options(void *ptr)
+void destruct_options(PyObject *capsule)
 {
-#ifdef IS_PY3K
-        ptr = PyCapsule_GetPointer(ptr, NULL);
-#endif
+        void *ptr = PyCapsule_GetPointer(capsule, NULL);
         options *opt = (options *) ptr;
 
         if( opt->mappingxml != NULL ) {
