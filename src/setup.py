@@ -49,17 +49,17 @@ macros = get_macros()
 #
 
 setup(
-  name = "python-dmidecode",
+  name = "dmidecode",
   version = dmidec_version,
   license='GPL-2',
-  description = "Python extension module for dmidecode",
+  description = "Python module for reading DMI/SMBIOS data with JSON export",
   author = "Nima Talebi & David Sommerseth",
   author_email = "nima@it.net.au, davids@redhat.com",
   url = "http://projects.autonomy.net.au/python-dmidecode/",
   data_files = [ ('share/python-dmidecode', ['src/pymap.xml']) ],
   ext_modules = [
     Extension(
-      "dmidecodemod",
+      "_dmidecode",
       sources      = [
         "src/dmidecodemodule.c",
         "src/util.c",

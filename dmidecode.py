@@ -1,6 +1,6 @@
 #
 #   dmidecode.py
-#   Module front-end for the python-dmidecode module.
+#   Python module for reading DMI/SMBIOS data with JSON export support.
 #
 #   Copyright 2009      David Sommerseth <davids@redhat.com>
 #   Copyright 2024      Enhanced with JSON/OEM support
@@ -19,12 +19,6 @@
 #   along with this program; if not, write to the Free Software
 #   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 #
-#   For the avoidance of doubt the "preferred form" of this code is one which
-#   is in an open unpatent encumbered format. Where cryptographic key signing
-#   forms part of the process of creating an executable the information
-#   including keys needed to generate an equivalently functional executable
-#   are deemed to be part of the source code.
-#
 
 """
 Python DMI Decode Module
@@ -33,7 +27,7 @@ This module provides a Python interface for reading DMI/SMBIOS data from the sys
 It supports:
   - Querying by section (bios, system, processor, memory, etc.)
   - Querying by type ID (0-255, including OEM types 128-255)
-  - Export to XML or JSON formats
+  - Export to JSON format
   - Automatic handling of OEM-specific types with raw data fallback
 
 Usage:
@@ -48,39 +42,24 @@ Usage:
     # Get all data as JSON
     json_data = dmidecode.get_all_json()
 
-    # Query OEM types with raw fallback
+    # Query OEM types with fallback
     oem_data = dmidecode.query_oem_type(130)
 
     # Export to JSON file
     dmidecode.export_json('/path/to/output.json')
 
-    # XML API
-    xml_api = dmidecode.dmidecodeXML()
-    xml_api.SetResultType(dmidecode.DMIXML_DOC)
-    xml_doc = xml_api.QuerySection('all')
+    # Get hardware summary
+    info = dmidecode.get_hardware_info()
 """
 
 import json
 import logging
-import re
 from typing import Any, Dict, List, Optional, Union
 
-# Try to import libxml2 (optional for JSON-only usage)
-try:
-    import libxml2
-    _HAS_LIBXML2 = True
-except ImportError:
-    libxml2 = None
-    _HAS_LIBXML2 = False
-
-from dmidecodemod import *
+from _dmidecode import *
 
 # Set up module logger
 logger = logging.getLogger(__name__)
-
-# XML result type constants
-DMIXML_NODE = 'n'
-DMIXML_DOC = 'd'
 
 # =============================================================================
 # DMI Type Constants and Mappings (SMBIOS Specification)
@@ -445,107 +424,19 @@ def _extract_strings_from_raw(raw_data: Union[str, bytes]) -> List[str]:
 
 
 # =============================================================================
-# OEM Type Handling with XML Fallback
+# OEM Type Handling
 # =============================================================================
 
-def _extract_data_from_xml_string(xml_str: Union[str, bytes], type_id: int) -> Dict:
+def query_oem_type(type_id: int) -> Optional[Dict]:
     """
-    Extract data from XML string for OEM types.
-
-    Args:
-        xml_str: XML string from dmidecode
-        type_id: DMI type ID
-
-    Returns:
-        Dictionary with extracted DMI data
-    """
-    result = {}
-
-    if isinstance(xml_str, bytes):
-        xml_str = xml_str.decode('utf-8', errors='replace')
-
-    # Check for DMImessage elements (unsupported types)
-    dmimessage_pattern = (
-        rf'<DMImessage[^>]*type="{type_id}"[^>]*unsupported="1"[^>]*'
-        rf'handle="(0x[0-9A-Fa-f]+)"[^>]*size="(\d+)"[^>]*>([^<]*)</DMImessage>'
-    )
-    dmimessages = re.findall(dmimessage_pattern, xml_str)
-
-    if dmimessages:
-        for handle, size, message in dmimessages:
-            entry = {
-                'dmi_type': type_id,
-                'dmi_handle': handle,
-                'dmi_size': int(size),
-                'data': {
-                    'Status': 'Unsupported by dmidecode',
-                    'Message': message.strip() if message.strip() else f'OEM type {type_id} not decoded'
-                }
-            }
-            result[handle] = entry
-        return result
-
-    # Find handles, sizes, row data, and strings
-    handle_pattern = r'handle="(0x[0-9A-Fa-f]+)"'
-    handles = re.findall(handle_pattern, xml_str)
-
-    type_pattern = rf'type="{type_id}"[^>]*size="(\d+)"'
-    sizes = re.findall(type_pattern, xml_str)
-
-    row_pattern = r'<Row[^>]*>([^<]+)</Row>'
-    row_data = re.findall(row_pattern, xml_str)
-
-    string_pattern = r'<String[^>]*index="(\d+)"[^>]*>([^<]*)</String>'
-    strings = re.findall(string_pattern, xml_str)
-
-    record_pattern = r'<Record[^>]*index="(\d+)"[^>]*>([^<]+)</Record>'
-    strings.extend(re.findall(record_pattern, xml_str))
-
-    for i, handle in enumerate(handles):
-        entry = {
-            'dmi_type': type_id,
-            'dmi_handle': handle,
-            'dmi_size': int(sizes[i]) if i < len(sizes) else 0,
-            'data': {}
-        }
-
-        if row_data:
-            all_bytes = []
-            for row in row_data:
-                hex_values = re.findall(r'0x([0-9A-Fa-f]{2})', row)
-                all_bytes.extend(hex_values)
-
-            if all_bytes:
-                entry['data']['Header and Data'] = ' '.join(b.upper() for b in all_bytes)
-
-        if strings:
-            entry['data']['Strings'] = {}
-            for idx, val in strings:
-                if val.strip():
-                    entry['data']['Strings'][idx] = val.strip()
-
-        result[handle] = entry
-
-    return result
-
-
-def query_oem_type(type_id: int, include_raw: bool = True) -> Optional[Dict]:
-    """
-    Query an OEM type (128-255) with XML fallback for unmapped types.
-
-    This function tries multiple approaches to get OEM data:
-    1. Standard QueryTypeId
-    2. XML API with parsing (if libxml2 is available)
-    3. Raw XML content extraction
+    Query an OEM type (128-255).
 
     Args:
         type_id: DMI type ID (should be 128-255 for OEM types)
-        include_raw: Whether to include raw hex data in the result
 
     Returns:
         Dictionary with DMI data, or None if type doesn't exist
     """
-    # Try standard API first
     try:
         data = QueryTypeId(type_id)
         clear_warnings()
@@ -553,40 +444,12 @@ def query_oem_type(type_id: int, include_raw: bool = True) -> Optional[Dict]:
             return _decode_bytes(data)
     except Exception:
         pass
-
-    # Try XML API for full data extraction (if libxml2 available)
-    if _HAS_LIBXML2:
-        try:
-            xml_api = dmidecodeXML()
-            xml_api.SetResultType(DMIXML_DOC)
-            xml_doc = xml_api.QueryTypeId(type_id)
-            clear_warnings()
-
-            if xml_doc:
-                result = {}
-                root = xml_doc.getRootElement()
-
-                if root:
-                    xml_str = xml_doc.serialize('utf-8')
-                    if xml_str and len(xml_str) > 100:
-                        result = _extract_data_from_xml_string(xml_str, type_id)
-
-                xml_doc.freeDoc()
-
-                if result:
-                    return result
-        except Exception as e:
-            logger.debug(f"OEM type {type_id} XML query failed: {e}")
-
     return None
 
 
 def query_type_with_fallback(type_id: int) -> Optional[Dict]:
     """
-    Query a DMI type with automatic fallback for unmapped types.
-
-    For standard types (0-46), uses the regular QueryTypeId.
-    For OEM types (128-255), uses query_oem_type with XML fallback.
+    Query a DMI type with automatic handling.
 
     Args:
         type_id: DMI type ID (0-255)
@@ -594,15 +457,12 @@ def query_type_with_fallback(type_id: int) -> Optional[Dict]:
     Returns:
         Dictionary with DMI data, or None if type doesn't exist
     """
-    if is_oem_type(type_id):
-        return query_oem_type(type_id)
-    else:
-        try:
-            data = QueryTypeId(type_id)
-            if data:
-                return _decode_bytes(data)
-        except Exception:
-            pass
+    try:
+        data = QueryTypeId(type_id)
+        if data:
+            return _decode_bytes(data)
+    except Exception:
+        pass
     return None
 
 
@@ -736,129 +596,6 @@ def export_json(filepath: str, include_oem: bool = False, pretty: bool = True) -
     except Exception as e:
         logger.error(f"Failed to export JSON: {e}")
         return False
-
-
-# =============================================================================
-# XML API Class
-# =============================================================================
-
-def has_xml_support() -> bool:
-    """
-    Check if XML support is available (libxml2 is installed).
-
-    Returns:
-        True if libxml2 is available
-    """
-    return _HAS_LIBXML2
-
-
-class dmidecodeXML:
-    """Native Python API for retrieving dmidecode information as XML."""
-
-    def __init__(self):
-        if not _HAS_LIBXML2:
-            raise ImportError(
-                "libxml2 is required for XML API support. "
-                "Install python3-libxml2 package."
-            )
-        self.restype = DMIXML_NODE
-
-    def SetResultType(self, result_type: str) -> bool:
-        """
-        Sets the result type of queries.
-
-        Args:
-            result_type: DMIXML_NODE or DMIXML_DOC
-
-        Returns:
-            True if type was set successfully
-
-        Raises:
-            TypeError: If result_type is invalid
-        """
-        if result_type == DMIXML_NODE:
-            self.restype = DMIXML_NODE
-        elif result_type == DMIXML_DOC:
-            self.restype = DMIXML_DOC
-        else:
-            raise TypeError("Invalid result type value. Use DMIXML_NODE or DMIXML_DOC")
-        return True
-
-    def QuerySection(self, sectname: str):
-        """
-        Queries the DMI data structure for a given section name.
-
-        Args:
-            sectname: Section name ('bios', 'system', 'processor', etc.)
-
-        Returns:
-            libxml2.xmlNode or libxml2.xmlDoc based on result type
-        """
-        if self.restype == DMIXML_NODE:
-            ret = libxml2.xmlNode(
-                _obj=xmlapi(query_type='s', result_type=self.restype, section=sectname)
-            )
-        elif self.restype == DMIXML_DOC:
-            ret = libxml2.xmlDoc(
-                _obj=xmlapi(query_type='s', result_type=self.restype, section=sectname)
-            )
-        else:
-            raise TypeError("Invalid result type value")
-
-        if _auto_log_enabled:
-            log_messages()
-
-        return ret
-
-    def QueryTypeId(self, tpid: int):
-        """
-        Queries the DMI data structure for a specific DMI type.
-
-        Args:
-            tpid: DMI type ID (0-255)
-
-        Returns:
-            libxml2.xmlNode or libxml2.xmlDoc based on result type
-        """
-        if self.restype == DMIXML_NODE:
-            ret = libxml2.xmlNode(
-                _obj=xmlapi(query_type='t', result_type=self.restype, typeid=tpid)
-            )
-        elif self.restype == DMIXML_DOC:
-            ret = libxml2.xmlDoc(
-                _obj=xmlapi(query_type='t', result_type=self.restype, typeid=tpid)
-            )
-        else:
-            raise TypeError("Invalid result type value")
-
-        if _auto_log_enabled:
-            log_messages()
-
-        return ret
-
-    def export_xml(self, filepath: str, section: str = 'all', encoding: str = 'UTF-8') -> bool:
-        """
-        Export DMI data to an XML file.
-
-        Args:
-            filepath: Path to output file
-            section: Section name or 'all' for all data
-            encoding: XML encoding (default: UTF-8)
-
-        Returns:
-            True if export succeeded
-        """
-        try:
-            old_type = self.restype
-            self.SetResultType(DMIXML_DOC)
-            xml_doc = self.QuerySection(section)
-            xml_doc.saveFormatFileEnc(filepath, encoding, 1)
-            xml_doc.freeDoc()
-            self.restype = old_type
-            return True
-        except Exception as e:
-            logger.error(f"Failed to export XML: {e}")
-            return False
 
 
 # =============================================================================

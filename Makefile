@@ -40,13 +40,13 @@
 
 PY_BIN  := python3
 VERSION := $(shell cd src;$(PY_BIN) -c "from setup_common import *; print(get_version());")
-PACKAGE := python-dmidecode
+PACKAGE := dmidecode
 PY_VER  := $(shell $(PY_BIN) -c 'import sys; print("%d.%d"%sys.version_info[0:2])')
 PY_MV   := $(shell echo $(PY_VER) | cut -b 1)
 PY      := python$(PY_VER)
 SOABI   := $(shell $(PY_BIN) -c 'import sysconfig; print(sysconfig.get_config_var("SOABI"))')
 # Find the .so file dynamically after build - handles various Python version directory naming
-SO      = $(shell find build -name "dmidecodemod.$(SOABI).so" 2>/dev/null | head -1)
+SO      = $(shell find build -name "_dmidecode.$(SOABI).so" 2>/dev/null | head -1)
 SHELL	:= /bin/bash
 
 ###############################################################################
@@ -54,10 +54,10 @@ SHELL	:= /bin/bash
 
 all : build dmidump
 
-build: $(PY)-dmidecodemod.so
-$(PY)-dmidecodemod.so:
+build: $(PY)-_dmidecode.so
+$(PY)-_dmidecode.so:
 	$(PY) src/setup.py build
-	cp $$(find build -name "dmidecodemod.$(SOABI).so" 2>/dev/null | head -1) $@
+	cp $$(find build -name "_dmidecode.$(SOABI).so" 2>/dev/null | head -1) $@
 
 dmidump : src/util.o src/efi.o src/dmilog.o
 	$(CC) -o $@ src/dmidump.c $^ -g -Wall -D_DMIDUMP_MAIN_

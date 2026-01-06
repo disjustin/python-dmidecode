@@ -385,53 +385,29 @@ def test_list_available_types():
         dmidecode.clear_warnings()
 
 
-def test_xml_support():
-    """Test XML support functionality."""
-    print_header("TEST: XML Support")
+def test_additional_features():
+    """Test additional helper features."""
+    print_header("TEST: Additional Features")
 
     import dmidecode
 
-    print_subheader("XML Support Check")
-    has_xml = dmidecode.has_xml_support()
-    print(f"  libxml2 available: {has_xml}")
+    print_subheader("Type Name Lookup")
+    test_types = [0, 1, 4, 17, 127, 130, 200]
+    for type_id in test_types:
+        name = dmidecode.get_type_name(type_id)
+        print(f"  Type {type_id}: {name}")
 
-    if has_xml:
-        print_subheader("dmidecodeXML Class")
-        try:
-            xml_api = dmidecode.dmidecodeXML()
-            xml_api.SetResultType(dmidecode.DMIXML_DOC)
-            xml_doc = xml_api.QuerySection('bios')
+    print_subheader("Type Category Checks")
+    checks = [
+        (4, 'standard', dmidecode.is_standard_type(4)),
+        (130, 'OEM', dmidecode.is_oem_type(130)),
+        (50, 'reserved', not dmidecode.is_standard_type(50) and not dmidecode.is_oem_type(50)),
+    ]
+    for type_id, category, result in checks:
+        print(f"  Type {type_id} is {category}: {result}")
 
-            if xml_doc:
-                print(f"  XML document retrieved successfully")
-                xml_doc.freeDoc()
-            else:
-                print(f"  No XML document returned")
-        except Exception as e:
-            print(f"  Error: {e}")
-
-        print_subheader("XML Export")
-        try:
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.xml', delete=False) as f:
-                temp_path = f.name
-
-            xml_api = dmidecode.dmidecodeXML()
-            success = xml_api.export_xml(temp_path, section='bios')
-
-            if success:
-                with open(temp_path, 'r') as f:
-                    content = f.read()
-                print(f"  Export successful")
-                print(f"  File size: {len(content)} bytes")
-                print(f"  Preview: {content[:100]}...")
-                os.unlink(temp_path)
-            else:
-                print(f"  Export failed")
-        except Exception as e:
-            print(f"  Error: {e}")
-    else:
-        print(f"  Skipping XML tests (libxml2 not available)")
-        print(f"  JSON functionality still works without libxml2")
+    print_subheader("DMI Sections")
+    print(f"  Available sections: {list(dmidecode.DMI_SECTIONS.keys())}")
 
     dmidecode.clear_warnings()
     return True
@@ -456,7 +432,7 @@ def run_all_tests(dump_file=None):
         ("OEM Types", test_oem_types),
         ("Hardware Info", test_hardware_info),
         ("List Available Types", test_list_available_types),
-        ("XML Support", test_xml_support),
+        ("Additional Features", test_additional_features),
     ]
 
     results = {}
@@ -502,7 +478,7 @@ Examples:
 
     parser.add_argument(
         '--test',
-        choices=['constants', 'section', 'type', 'json', 'oem', 'hwinfo', 'xml', 'all'],
+        choices=['constants', 'section', 'type', 'json', 'oem', 'hwinfo', 'features', 'all'],
         default='all',
         help='Run specific test (default: all)'
     )
@@ -530,7 +506,7 @@ Examples:
         'json': test_json_export,
         'oem': test_oem_types,
         'hwinfo': test_hardware_info,
-        'xml': test_xml_support,
+        'features': test_additional_features,
         'all': lambda: run_all_tests(args.dump_file),
     }
 
