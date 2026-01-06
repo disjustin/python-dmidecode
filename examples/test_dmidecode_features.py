@@ -54,7 +54,6 @@ def test_module_import():
         print(f"  Module imported successfully")
         print(f"  Module version: {dmidecode.version}")
         print(f"  DMI version: {getattr(dmidecode, 'dmi', 'N/A')}")
-        print(f"  XML support: {dmidecode.has_xml_support()}")
         return True
     except ImportError as e:
         print(f"  FAILED: {e}")
