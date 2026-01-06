@@ -418,7 +418,7 @@ xmlNode* load_mappingxml(options *opt) {
                 // Load mapping into memory
                 opt->mappingxml = xmlReadFile(opt->python_xml_map, NULL, 0);
                 if( opt->mappingxml == NULL ) {
-                        PyReturnError(PyExc_IOError, "Could not open tje XML mapping file '%s'",
+                        PyReturnError(PyExc_IOError, "Could not open the XML mapping file '%s'",
                                       opt->python_xml_map);
                 }
        }

@@ -58,7 +58,7 @@
 #endif
 
 #ifndef PYTHON_XML_MAP
-#define PYTHON_XML_MAP "/usr/share/python-dmidecode/pymap.xml"
+#define PYTHON_XML_MAP "/usr/local/share/python-dmidecode/pymap.xml"
 #endif
 
 #endif
