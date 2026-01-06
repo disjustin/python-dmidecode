@@ -335,6 +335,16 @@ def is_standard_type(type_id: int) -> bool:
     return 0 <= type_id <= 46
 
 
+def has_xml_support() -> bool:
+    """
+    Check if XML export support is available.
+
+    Returns:
+        False - XML support has been removed in favor of JSON export
+    """
+    return False
+
+
 def _decode_bytes(obj: Any) -> Any:
     """Recursively decode byte strings to regular strings."""
     if isinstance(obj, bytes):
